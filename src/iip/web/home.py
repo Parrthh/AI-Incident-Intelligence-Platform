@@ -25,15 +25,39 @@ router = APIRouter(include_in_schema=False)
 REPO_URL = "https://github.com/Parrthh/AI-Incident-Intelligence-Platform"
 
 # Shown on the roadmap. Update when a milestone changes state.
-MILESTONES: list[tuple[str, str]] = [
-    ("Foundations", "done"),
-    ("Alerts to summaries", "done"),
-    ("Reliable pipeline", "active"),
-    ("Grouping and evidence", "planned"),
-    ("Root cause with citations", "planned"),
-    ("Similar past incidents", "planned"),
-    ("Production hardening", "planned"),
-    ("Public launch", "planned"),
+MILESTONES: list[tuple[str, str, str]] = [
+    ("Foundations", "done", "Project setup, automated tests and a checked deploy on every change."),
+    (
+        "Alerts to summaries",
+        "done",
+        "Receive alerts, open incidents and write an AI summary for each.",
+    ),
+    (
+        "Reliable pipeline",
+        "active",
+        "A job queue, so no summary is lost when a server restarts or a service is down.",
+    ),
+    (
+        "Grouping and evidence",
+        "planned",
+        "Group related alerts into one incident and gather logs, traces and recent deploys.",
+    ),
+    (
+        "Root cause with citations",
+        "planned",
+        "Suggest likely causes, each pointing at its evidence, and measure accuracy on test cases.",
+    ),
+    (
+        "Similar past incidents",
+        "planned",
+        "Find earlier incidents that looked like this one and how they were fixed.",
+    ),
+    (
+        "Production hardening",
+        "planned",
+        "Security, rate limits, data privacy controls and monitoring of the platform itself.",
+    ),
+    ("Public launch", "planned", "Docs, a one-command install and a release other teams can use."),
 ]
 
 # Captured from the `payment_failure` chaos run on 2026-11-01: the alert as
@@ -72,7 +96,8 @@ class StatsView:
 def _stats_view(stats: SiteStats | None) -> StatsView:
     if stats is None:
         return StatsView("0", "0", "0", "n/a")
-    median = f"{stats.median_summary_ms / 1000:.1f} s" if stats.median_summary_ms else "n/a"
+    ms = stats.median_summary_ms
+    median = "n/a" if ms is None else (f"{ms} ms" if ms < 1000 else f"{ms / 1000:.1f} s")
     return StatsView(f"{stats.incidents:,}", f"{stats.alerts:,}", f"{stats.summaries:,}", median)
 
 
@@ -120,7 +145,7 @@ async def home(request: Request) -> HTMLResponse:
         {
             "showcase": showcase,
             "stats": _stats_view(stats),
-            "milestones": [{"name": n, "state": s} for n, s in MILESTONES],
+            "milestones": [{"name": n, "state": st, "about": a} for n, st, a in MILESTONES],
             "repo_url": REPO_URL,
             "version": __version__,
             "commit": sha[:12] if sha != "unknown" else sha,

@@ -26,3 +26,17 @@ def test_summary_credit_is_plain_language(client: TestClient) -> None:
     assert "Written by gemini-3.5-flash-lite, prompt version 0" in html
     assert "summary_v0" not in html
     assert "In active development" not in html
+
+
+def test_home_explains_the_project_to_non_engineers(client: TestClient) -> None:
+    html = client.get("/").text
+
+    # Where the incidents come from, in plain words.
+    assert "Where the incidents on this site come from" in html
+    assert "No real company" in html
+    assert "Breaks it on purpose" in html
+    # Short definitions of the jargon the page uses.
+    for term in ("<dt>Alert</dt>", "<dt>Incident</dt>", "<dt>On call</dt>"):
+        assert term in html
+    # Each milestone says what it means, not just its name.
+    assert "so no summary is lost when a server restarts" in html

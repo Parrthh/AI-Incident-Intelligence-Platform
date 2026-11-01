@@ -40,7 +40,7 @@ from iip.llm.retry import with_retries
 
 logger = structlog.get_logger(__name__)
 
-SUMMARY_PROMPT = ("summary", "v0")
+SUMMARY_PROMPT = ("summary", "v1")
 KIND_SUMMARY = "summary"
 MAX_ALERTS_IN_PROMPT = 20
 # How long a claim protects a row. Far longer than one run takes (about 95 s at
