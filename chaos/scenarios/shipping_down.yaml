@@ -1,0 +1,5 @@
+description: The shipping service's container is stopped.
+inject: {type: docker_stop, container: shipping}
+root_cause_service: shipping
+category: service_down
+watch_service: checkout

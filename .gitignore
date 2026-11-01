@@ -40,3 +40,6 @@ chaos/runs/
 .idea/
 .DS_Store
 *.swp
+
+# Eval reports from local runs (the committed baseline lives in evals/)
+evals/reports/

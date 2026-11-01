@@ -1,0 +1,4 @@
+description: The ad service burns CPU, so its responses slow down.
+inject: {type: flag, flag: adHighCpu, variant: "on"}
+root_cause_service: ad
+category: resource_exhaustion

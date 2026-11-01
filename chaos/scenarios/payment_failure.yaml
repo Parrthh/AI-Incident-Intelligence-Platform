@@ -1,0 +1,4 @@
+description: Every payment charge fails with "Invalid token". Checkout fails as a caller.
+inject: {type: flag, flag: paymentFailure, variant: "100%"}
+root_cause_service: payment
+category: code_bug

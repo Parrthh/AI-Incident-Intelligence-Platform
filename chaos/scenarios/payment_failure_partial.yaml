@@ -1,0 +1,4 @@
+description: Half of payment charges fail. A weaker signal than payment_failure.
+inject: {type: flag, flag: paymentFailure, variant: "50%"}
+root_cause_service: payment
+category: code_bug

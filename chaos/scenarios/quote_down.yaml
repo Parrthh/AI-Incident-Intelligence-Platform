@@ -1,0 +1,5 @@
+description: The quote service, called by shipping, is stopped.
+inject: {type: docker_stop, container: quote}
+root_cause_service: quote
+category: service_down
+watch_service: shipping

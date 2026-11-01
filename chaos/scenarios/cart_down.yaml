@@ -1,0 +1,5 @@
+description: The cart service's container is stopped.
+inject: {type: docker_stop, container: cart}
+root_cause_service: cart
+category: service_down
+watch_service: frontend
