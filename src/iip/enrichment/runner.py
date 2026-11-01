@@ -65,6 +65,12 @@ class Enricher:
     def source_names(self) -> list[str]:
         return [s.name for s in self._sources]
 
+    async def aclose(self) -> None:
+        for source in self._sources:
+            close = getattr(source, "aclose", None)
+            if close is not None:
+                await close()
+
     async def enrich(self, incident_id: uuid.UUID) -> list[SourceResult] | None:
         """Collect and store evidence. Returns None if the incident doesn't exist."""
         async with self._sessionmaker() as session:

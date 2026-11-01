@@ -16,6 +16,12 @@ services:
     ports:
       - "9093:9093"
 
+  # Logs backend for the platform's log evidence (the demo's own is OpenSearch).
+  loki:
+    image: grafana/loki:3.5.7
+    container_name: loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+
   iip-capture:
     image: python:3.12-slim
     container_name: iip-capture
@@ -55,6 +61,11 @@ services:
       IIP_WEBHOOK_TOKEN: chaos-local-token
       IIP_RUN_WORKER_IN_API: "true"
       IIP_SERVICE_GRAPH: builtin:otel-demo
+      # Evidence sources inside the demo's network (M3).
+      IIP_PROMETHEUS_URL: http://prometheus:9090
+      IIP_JAEGER_URL: http://jaeger:16686/jaeger/ui
+      IIP_LOKI_URL: http://loki:3100
+      IIP_ENRICHMENT_DEBOUNCE_SECONDS: "30"
       # Resolve a minute after the last alert clears, so the run doesn't wait 5.
       IIP_INCIDENT_QUIET_SECONDS: "60"
       IIP_LLM_PROVIDER: ${IIP_LLM_PROVIDER:-fake}

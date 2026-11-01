@@ -117,6 +117,12 @@ class Settings(BaseSettings):
     # How far before the incident's start to look for causes (deploys, errors).
     evidence_lookback_seconds: float = Field(default=900.0, ge=0, le=86_400)
     evidence_source_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
+    # Telemetry backends to collect evidence from. Each is optional: unset means
+    # that kind of evidence isn't collected.
+    prometheus_url: str | None = None
+    prometheus_query_set: str = "otel-spanmetrics"
+    jaeger_url: str | None = None  # Jaeger query API base, e.g. http://jaeger:16686
+    loki_url: str | None = None
 
     # Redis stream the background jobs go through (ADR-0002). Tests use their own.
     jobs_stream: str = Field(default="iip.jobs", min_length=1, max_length=200)

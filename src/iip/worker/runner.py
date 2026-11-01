@@ -80,32 +80,38 @@ async def run_worker(
         base_backoff_s=deps.settings.queue_retry_base_seconds,
         batch=max(10, deps.settings.worker_concurrency),
     )
+    enricher = build_enricher(deps.sessionmaker, deps.settings)
     handlers = build_handlers(
         deps.sessionmaker,
         deps.llm,
         llm_max_retries=deps.settings.llm_max_retries,
-        enricher=build_enricher(deps.sessionmaker, deps.settings),
+        enricher=enricher,
     )
     # Sweep for abandoned jobs at least as often as the shortest retry wait.
     reclaim = min(DEFAULT_RECLAIM_INTERVAL_SECONDS, deps.settings.queue_retry_base_seconds)
-    await asyncio.gather(
-        run_consumer(
-            queue,
-            handlers,
-            stop,
-            reclaim_interval_seconds=reclaim,
-            concurrency=deps.settings.worker_concurrency,
-        ),
-        # Resolves quiet incidents and queues evidence collection (M3).
-        run_sweeper(
-            deps.sessionmaker,
-            stop,
-            quiet=timedelta(seconds=deps.settings.incident_quiet_seconds),
-            jobs_stream=deps.settings.jobs_stream,
-            relay=OutboxRelay(deps.sessionmaker, deps.redis),
-            interval=min(DEFAULT_INTERVAL_SECONDS, max(1.0, deps.settings.incident_quiet_seconds)),
-        ),
-    )
+    try:
+        await asyncio.gather(
+            run_consumer(
+                queue,
+                handlers,
+                stop,
+                reclaim_interval_seconds=reclaim,
+                concurrency=deps.settings.worker_concurrency,
+            ),
+            # Resolves quiet incidents and queues evidence collection (M3).
+            run_sweeper(
+                deps.sessionmaker,
+                stop,
+                quiet=timedelta(seconds=deps.settings.incident_quiet_seconds),
+                jobs_stream=deps.settings.jobs_stream,
+                relay=OutboxRelay(deps.sessionmaker, deps.redis),
+                interval=min(
+                    DEFAULT_INTERVAL_SECONDS, max(1.0, deps.settings.incident_quiet_seconds)
+                ),
+            ),
+        )
+    finally:
+        await enricher.aclose()
 
 
 async def _heartbeat(stop: asyncio.Event, interval: float) -> None:
