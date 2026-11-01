@@ -163,7 +163,7 @@
           <a class="btn primary" href="/incidents">View live incidents</a>
           <a class="btn secondary" href="{{ repo_url }}">Read the source</a>
         </div>
-        <p class="byline">A project by <a href="https://github.com/Parrthh">Parth Kharkar</a>. In active development.</p>
+        <p class="byline">A project by <a href="https://github.com/Parrthh">Parth Kharkar</a>.</p>
       </div>
 
       <figure class="exhibit" aria-label="An alert and the summary written for it">
@@ -179,7 +179,7 @@
         <div class="connector" aria-hidden="true"><span>{% if showcase.latency %}summarized in {{ showcase.latency }}{% else %}summarized{% endif %}</span></div>
         <div class="summary-card" role="group" aria-label="Summary written for the on-call engineer">
           <p>{{ showcase.summary }}</p>
-          <div class="meta"><span>{{ showcase.model }}</span><span>prompt {{ showcase.prompt }}</span>{% if showcase.link %}<a href="{{ showcase.link }}">Open this incident</a>{% endif %}</div>
+          <div class="meta"><span>Written by {{ showcase.model }}, prompt version {{ showcase.prompt | prompt_version }}</span>{% if showcase.link %}<a href="{{ showcase.link }}">Open this incident</a>{% endif %}</div>
         </div>
       </figure>
     </div>

@@ -44,7 +44,7 @@
     <p class="muted">The summary couldn't be generated. The alerts below have the full details.</p>
   {% else %}
     <p>{{ summary.summary }}</p>
-    <p class="muted" style="font-size:.82rem">{{ summary.model }} · prompt {{ summary.prompt_version }}{% if summary.latency_ms %} · {{ summary.latency_ms }} ms{% endif %}</p>
+    <p class="muted" style="font-size:.82rem">Written by {{ summary.model }}, prompt version {{ summary.prompt_version | prompt_version }}{% if summary.latency_ms %}, in {{ summary.latency_ms }} ms{% endif %}</p>
   {% endif %}
 </div>
 

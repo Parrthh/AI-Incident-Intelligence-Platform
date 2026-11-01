@@ -18,3 +18,11 @@ def test_home_renders_example_without_a_database(client: TestClient) -> None:
 def test_home_answers_head_requests(client: TestClient) -> None:
     # Hosting platforms and uptime monitors often probe with HEAD.
     assert client.head("/").status_code == 200
+
+
+def test_summary_credit_is_plain_language(client: TestClient) -> None:
+    html = client.get("/").text
+
+    assert "Written by gemini-3.5-flash-lite, prompt version 0" in html
+    assert "summary_v0" not in html
+    assert "In active development" not in html

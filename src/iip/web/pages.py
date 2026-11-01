@@ -23,6 +23,15 @@ templates = Jinja2Templates(
     )
 )
 
+
+def prompt_version(prompt_id: str) -> str:
+    """Show a stored prompt ID like ``summary_v0`` as the plain number ``0``."""
+    _, _, version = prompt_id.rpartition("_v")
+    return version or prompt_id
+
+
+templates.env.filters["prompt_version"] = prompt_version
+
 router = APIRouter(include_in_schema=False)
 
 
