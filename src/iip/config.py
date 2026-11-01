@@ -105,6 +105,12 @@ class Settings(BaseSettings):
     # First retry wait for a failed or abandoned job; doubles per attempt, capped
     # at 10 minutes. Must exceed the slowest job run (ADR-0002). Tests shrink it.
     queue_retry_base_seconds: float = Field(default=120.0, gt=0, le=600)
+
+    # /metrics (Prometheus). If a token is set, scrapes must send it as a Bearer
+    # token; unset means open, which is fine on a private network.
+    metrics_token: SecretStr | None = Field(default=None, validation_alias="IIP_METRICS_TOKEN")
+    # Port where a standalone `iip worker` serves its own /metrics. 0 turns it off.
+    worker_metrics_port: int = Field(default=9100, ge=0, le=65535)
     # Fallback sweep for outbox rows the immediate publish missed (ADR-0008).
     # Longer than Neon's 5-minute auto-suspend on purpose, so an idle demo lets
     # the database sleep.

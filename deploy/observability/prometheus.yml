@@ -1,0 +1,12 @@
+# Scrapes the platform's own metrics (M2). Used by docker-compose.observability.yml.
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+scrape_configs:
+  - job_name: iip-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000"]
+  - job_name: iip-worker
+    static_configs:
+      - targets: ["worker:9100"]

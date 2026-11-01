@@ -20,6 +20,7 @@ from collections.abc import Awaitable, Callable, Mapping
 
 import structlog
 
+from iip.observability.metrics import JOB_DURATION, JOBS
 from iip.queue.streams import Message, PermanentError, StreamQueue
 
 logger = structlog.get_logger(__name__)
@@ -36,6 +37,15 @@ async def handle_message(
     queue: StreamQueue, handlers: Mapping[str, Handler], message: Message
 ) -> str:
     """Run one message's handler and settle it. Returns the outcome name."""
+    started = time.perf_counter()
+    outcome = await _handle(queue, handlers, message)
+    JOBS.labels(type=message.type, outcome=outcome).inc()
+    if outcome != "dead_lettered" or message.type in handlers:
+        JOB_DURATION.labels(type=message.type).observe(time.perf_counter() - started)
+    return outcome
+
+
+async def _handle(queue: StreamQueue, handlers: Mapping[str, Handler], message: Message) -> str:
     log = logger.bind(
         stream=queue.stream, message_id=message.id, type=message.type, deliveries=message.deliveries
     )

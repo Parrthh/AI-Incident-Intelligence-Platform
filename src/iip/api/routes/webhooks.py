@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from iip.api.deps import SessionDep, require_webhook_token
 from iip.ingest.alertmanager import AlertmanagerPayload
 from iip.ingest.service import ingest_alertmanager
+from iip.observability.metrics import ALERTS_RECEIVED, INCIDENTS_OPENED
 from iip.queue.jobs import JOB_SUMMARIZE
 from iip.queue.outbox import OutboxRelay, enqueue
 
@@ -48,6 +49,8 @@ async def alertmanager_webhook(
         for incident_id in result.new_incident_ids:
             enqueue(session, settings.jobs_stream, JOB_SUMMARIZE, {"incident_id": str(incident_id)})
     await session.commit()
+    ALERTS_RECEIVED.inc(result.received)
+    INCIDENTS_OPENED.inc(len(result.new_incident_ids))
 
     relay: OutboxRelay | None = request.app.state.outbox_relay
     if relay is not None and result.new_incident_ids:

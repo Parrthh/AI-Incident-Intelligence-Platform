@@ -37,6 +37,7 @@ from iip.llm.base import LLMError, LLMProvider, LLMResponse
 from iip.llm.prompting import Prompt, load_prompt
 from iip.llm.redact import redact
 from iip.llm.retry import with_retries
+from iip.observability.metrics import LLM_REQUEST_DURATION, LLM_TOKENS
 
 logger = structlog.get_logger(__name__)
 
@@ -168,6 +169,13 @@ async def summarize_incident(
         await session.commit()
 
     if response is not None:
+        LLM_REQUEST_DURATION.labels(provider.name, response.model).observe(
+            response.latency_ms / 1000
+        )
+        if response.input_tokens is not None:
+            LLM_TOKENS.labels(provider.name, response.model, "input").inc(response.input_tokens)
+        if response.output_tokens is not None:
+            LLM_TOKENS.labels(provider.name, response.model, "output").inc(response.output_tokens)
         log.info(
             "summary_done",
             analysis_id=str(analysis_id),
