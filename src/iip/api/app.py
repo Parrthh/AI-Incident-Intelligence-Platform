@@ -17,11 +17,12 @@ from contextlib import asynccontextmanager, suppress
 import structlog
 from fastapi import FastAPI
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from iip import __version__
 from iip.api.health import ReadinessChecks
 from iip.api.middleware import RequestContextMiddleware
-from iip.api.routes import home, system
+from iip.api.routes import home, system, webhooks
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
 from iip.queue.redis import create_redis
@@ -56,6 +57,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
             readiness.register("database", check_db)
         app.state.db_engine = engine
+        # expire_on_commit=False: objects stay readable after commit (e.g. to build
+        # the response) without another round trip to the database.
+        app.state.sessionmaker = (
+            async_sessionmaker(engine, expire_on_commit=False) if engine is not None else None
+        )
 
         redis = None
         if settings.redis_url is not None:
@@ -109,4 +115,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     app.include_router(system.router)
     app.include_router(home.router)
+    app.include_router(webhooks.router)
     return app

@@ -8,15 +8,20 @@ The variables are deliberately named IIP_TEST_* so they never leak into the
 Settings that unit tests build.
 """
 
+import asyncio
 import os
+import sys
 import uuid
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.engine import make_url
 
 from iip.db.engine import create_engine
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 DATABASE_URL = os.environ.get("IIP_TEST_DATABASE_URL")
 REDIS_URL = os.environ.get("IIP_TEST_REDIS_URL")
@@ -62,3 +67,27 @@ async def fresh_database_url(database_url: str) -> AsyncIterator[str]:
         async with admin.connect() as conn:
             await conn.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
         await admin.dispose()
+
+
+async def run_migrations(database_url: str) -> None:
+    """Apply migrations in a subprocess, exactly as `iip migrate` does in production."""
+    env = {**os.environ, "IIP_DATABASE_URL": database_url, "IIP_LOG_JSON": "false"}
+    proc = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-m",
+        "iip",
+        "migrate",
+        cwd=REPO_ROOT,
+        env=env,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    output, _ = await asyncio.wait_for(proc.communicate(), timeout=60)
+    if proc.returncode != 0:
+        raise RuntimeError(f"migrations failed:\n{output.decode()}")
+
+
+@pytest.fixture
+async def migrated_database_url(fresh_database_url: str) -> str:
+    await run_migrations(fresh_database_url)
+    return fresh_database_url

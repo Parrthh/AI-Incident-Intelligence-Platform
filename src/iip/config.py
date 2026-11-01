@@ -76,6 +76,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("IIP_REDIS_URL", "REDIS_URL"),
     )
 
+    # Bearer token(s) that Alertmanager must send on the webhook. Comma-separated so
+    # a token can be rotated without downtime: add the new one, switch Alertmanager,
+    # then remove the old one. Unset means the webhook is disabled (503).
+    webhook_token: SecretStr | None = Field(default=None, validation_alias="IIP_WEBHOOK_TOKEN")
+
     # Run the worker loop inside the API process. Only for hosts without a
     # separate background worker (the free Render demo, ADR-0004). Self-hosted
     # installs run `iip worker` as its own container.
@@ -105,6 +110,12 @@ class Settings(BaseSettings):
                     "An https:// URL is a REST endpoint, not a Redis connection string."
                 )
         return value
+
+    @property
+    def webhook_tokens(self) -> list[str]:
+        if self.webhook_token is None:
+            return []
+        return [t.strip() for t in self.webhook_token.get_secret_value().split(",") if t.strip()]
 
     @property
     def commit_sha(self) -> str:

@@ -19,12 +19,15 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from iip.config import get_settings
 from iip.db.engine import parse_database_url
+from iip.db.models import Base
 
 # Arbitrary constant shared by every instance of this app. Any 64-bit integer works
 # as long as nothing else in the same database uses it.
 MIGRATION_LOCK_ID = 7_392_001
 
-target_metadata = None  # set to the SQLAlchemy MetaData once models exist (M1)
+# Lets `alembic revision --autogenerate` and the schema drift test compare the
+# models with the migrated database.
+target_metadata = Base.metadata
 
 
 def _database_url() -> str:
