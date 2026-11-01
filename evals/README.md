@@ -21,3 +21,11 @@ The report (Markdown and JSON) lands in `evals/reports/latest/`. It shows top-1 
 3. Commit them in a PR.
 
 A scenario that never fires an alert produces no snapshot; that shows as a failed chaos job, and the scenario is fixed or removed.
+
+## Scenarios tried and dropped
+
+These demo failures never fired an alert under the current rules (error ratio above 20%, or p95 latency above 1.5 s, each for a minute), so they produce no incident to analyze:
+
+- `cartFailure` (only fails `EmptyCart`), `adFailure`, `adHighCpu`, `productCatalogFailure` (one product), `recommendationCacheFailure`, `emailMemoryLeak`.
+
+Catching these would need more sensitive rules (for example, error rate well above a service's own normal level), which risks false alerts on the demo's background errors. A possible later improvement.

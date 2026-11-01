@@ -2,4 +2,4 @@ description: The currency service's container is stopped.
 inject: {type: docker_stop, container: currency}
 root_cause_service: currency
 category: service_down
-watch_service: frontend
+watch_service: checkout
