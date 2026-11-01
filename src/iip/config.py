@@ -12,7 +12,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -61,9 +61,39 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("IIP_GIT_SHA", "RENDER_GIT_COMMIT"),
     )
 
+    # Connection strings are SecretStr so they never show up in reprs, logs or
+    # error messages by accident. Call .get_secret_value() only where connecting.
+    database_url: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("IIP_DATABASE_URL", "DATABASE_URL"),
+    )
+    redis_url: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("IIP_REDIS_URL", "REDIS_URL"),
+    )
+
+    # Connection pool size per process. Free-tier databases allow few
+    # connections, so keep this small.
+    db_pool_size: int = Field(default=5, ge=1, le=50)
+
     @property
     def is_production(self) -> bool:
         return self.env is Environment.PRODUCTION
+
+    @model_validator(mode="after")
+    def _require_dependencies_in_production(self) -> "Settings":
+        if self.is_production:
+            missing = [
+                name
+                for name, value in (
+                    ("DATABASE_URL", self.database_url),
+                    ("REDIS_URL", self.redis_url),
+                )
+                if value is None
+            ]
+            if missing:
+                raise ValueError(f"missing required settings in production: {', '.join(missing)}")
+        return self
 
 
 @lru_cache

@@ -17,6 +17,10 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "IIP_GIT_SHA",
         "RENDER_GIT_COMMIT",
         "IIP_LOG_LEVEL",
+        "IIP_DATABASE_URL",
+        "DATABASE_URL",
+        "IIP_REDIS_URL",
+        "REDIS_URL",
     ):
         monkeypatch.delenv(name, raising=False)
 
@@ -33,6 +37,8 @@ def test_defaults() -> None:
 def test_reads_prefixed_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IIP_ENV", "production")
     monkeypatch.setenv("IIP_PORT", "9000")
+    monkeypatch.setenv("IIP_DATABASE_URL", "postgresql://u:p@db/iip")
+    monkeypatch.setenv("IIP_REDIS_URL", "redis://cache:6379/0")
 
     settings = make_settings()
 
@@ -72,3 +78,50 @@ def test_invalid_values_fail_fast(monkeypatch: pytest.MonkeyPatch, name: str, va
 
     with pytest.raises(ValidationError):
         make_settings()
+
+
+def test_accepts_platform_database_and_redis_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db/iip")
+    monkeypatch.setenv("REDIS_URL", "rediss://default:tok@cache:6379")
+
+    settings = make_settings()
+
+    assert settings.database_url is not None
+    assert settings.database_url.get_secret_value() == "postgresql://u:p@db/iip"
+    assert settings.redis_url is not None
+    assert settings.redis_url.get_secret_value() == "rediss://default:tok@cache:6379"
+
+
+def test_connection_strings_are_hidden_in_repr(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:hunter2@db/iip")
+
+    settings = make_settings()
+
+    assert "hunter2" not in repr(settings)
+    assert "hunter2" not in str(settings.model_dump())
+
+
+@pytest.mark.parametrize(
+    ("set_vars", "missing"),
+    [
+        ({}, "DATABASE_URL, REDIS_URL"),
+        ({"DATABASE_URL": "postgresql://u:p@db/iip"}, "REDIS_URL"),
+        ({"REDIS_URL": "redis://cache"}, "DATABASE_URL"),
+    ],
+)
+def test_production_requires_database_and_redis(
+    monkeypatch: pytest.MonkeyPatch, set_vars: dict[str, str], missing: str
+) -> None:
+    monkeypatch.setenv("IIP_ENV", "production")
+    for name, value in set_vars.items():
+        monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValidationError, match=missing):
+        make_settings()
+
+
+def test_development_runs_without_database_or_redis() -> None:
+    settings = make_settings()
+
+    assert settings.database_url is None
+    assert settings.redis_url is None
