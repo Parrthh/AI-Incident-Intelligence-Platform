@@ -1,0 +1,275 @@
+{
+  "alerts": [
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "28.61% of checkout spans ended in error over the last 3 minutes.",
+        "summary": "checkout error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "checkout",
+        "service_name": "checkout",
+        "severity": "critical"
+      },
+      "service": "checkout",
+      "severity": "critical",
+      "starts_at": "2026-11-01T23:41:21.510000Z",
+      "status": "firing"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_trace_3",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:38:19.557000Z",
+      "payload": {
+        "count": 20,
+        "error": "error",
+        "max_duration_ms": 24.6,
+        "operation": "POST /api/checkout",
+        "service": "frontend",
+        "trace_ids": [
+          "71349fc043b6b9e730ec5b98ce04baaf",
+          "6bda6bc1895a1c8de7f8340f93b8967d",
+          "239f49223c4813ee355a433ee21a5a9c"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 20 failing POST /api/checkout spans, \"error\" (first at 23:38:19, example trace 71349fc043b6b9e7)"
+    },
+    {
+      "id": "ev_trace_6",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:38:19.557242Z",
+      "payload": {
+        "count": 10,
+        "error": "error",
+        "max_duration_ms": 27.4,
+        "operation": "POST",
+        "service": "load-generator",
+        "trace_ids": [
+          "71349fc043b6b9e730ec5b98ce04baaf",
+          "6bda6bc1895a1c8de7f8340f93b8967d",
+          "239f49223c4813ee355a433ee21a5a9c"
+        ]
+      },
+      "source": "traces",
+      "summary": "load-generator: 10 failing POST spans, \"error\" (first at 23:38:19, example trace 71349fc043b6b9e7)"
+    },
+    {
+      "id": "ev_trace_5",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:38:19.557592Z",
+      "payload": {
+        "count": 10,
+        "error": "error",
+        "max_duration_ms": 25.3,
+        "operation": "POST",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "71349fc043b6b9e730ec5b98ce04baaf",
+          "6bda6bc1895a1c8de7f8340f93b8967d",
+          "239f49223c4813ee355a433ee21a5a9c"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 10 failing POST spans, \"error\" (first at 23:38:19, example trace 71349fc043b6b9e7)"
+    },
+    {
+      "id": "ev_trace_4",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:38:19.557663Z",
+      "payload": {
+        "count": 10,
+        "error": "error",
+        "max_duration_ms": 25.1,
+        "operation": "router frontend egress",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "71349fc043b6b9e730ec5b98ce04baaf",
+          "6bda6bc1895a1c8de7f8340f93b8967d",
+          "239f49223c4813ee355a433ee21a5a9c"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 10 failing router frontend egress spans, \"error\" (first at 23:38:19, example trace 71349fc043b6b9e7)"
+    },
+    {
+      "id": "ev_trace_7",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:38:19.558000Z",
+      "payload": {
+        "count": 10,
+        "error": "13 INTERNAL: shipping quote failure: failed POST to shipping service: Post \"http://shipping:50050/get-quote\": dial tcp: lookup shipping on 127.0.0.11:53: server misbehaving",
+        "max_duration_ms": 23.8,
+        "operation": "executing api route (pages) /api/checkout",
+        "service": "frontend",
+        "trace_ids": [
+          "71349fc043b6b9e730ec5b98ce04baaf",
+          "6bda6bc1895a1c8de7f8340f93b8967d",
+          "239f49223c4813ee355a433ee21a5a9c"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 10 failing executing api route (pages) /api/checkout spans, \"13 INTERNAL: shipping quote failure: failed POST to shipping service: Post \"http://shipping:50050/get-quote\": dial tcp: lookup shipping on 127.0.0.11:53: server misbehaving\" (first at 23:38:19, example trace 71349fc043b6b9e7)"
+    },
+    {
+      "id": "ev_trace_8",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:38:19.558000Z",
+      "payload": {
+        "count": 10,
+        "error": "error",
+        "max_duration_ms": 23.1,
+        "operation": "oteldemo.CheckoutService/PlaceOrder",
+        "service": "frontend",
+        "trace_ids": [
+          "71349fc043b6b9e730ec5b98ce04baaf",
+          "6bda6bc1895a1c8de7f8340f93b8967d",
+          "239f49223c4813ee355a433ee21a5a9c"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 10 failing oteldemo.CheckoutService/PlaceOrder spans, \"error\" (first at 23:38:19, example trace 71349fc043b6b9e7)"
+    },
+    {
+      "id": "ev_trace_1",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:38:19.559054Z",
+      "payload": {
+        "count": 10,
+        "error": "shipping quote failure: failed POST to shipping service: Post \"http://shipping:50050/get-quote\": dial tcp: lookup shipping on 127.0.0.11:53: server misbehaving",
+        "max_duration_ms": 21.5,
+        "operation": "oteldemo.CheckoutService/PlaceOrder",
+        "service": "checkout",
+        "trace_ids": [
+          "71349fc043b6b9e730ec5b98ce04baaf",
+          "6bda6bc1895a1c8de7f8340f93b8967d",
+          "239f49223c4813ee355a433ee21a5a9c"
+        ]
+      },
+      "source": "traces",
+      "summary": "checkout: 10 failing oteldemo.CheckoutService/PlaceOrder spans, \"shipping quote failure: failed POST to shipping service: Post \"http://shipping:50050/get-quote\": dial tcp: lookup shipping on 127.0.0.11:53: server misbehaving\" (first at 23:38:19, example trace 71349fc043b6b9e7)"
+    },
+    {
+      "id": "ev_trace_2",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:38:19.563176Z",
+      "payload": {
+        "count": 10,
+        "error": "dial tcp: lookup shipping on 127.0.0.11:53: server misbehaving",
+        "max_duration_ms": 11.3,
+        "operation": "POST",
+        "service": "checkout",
+        "trace_ids": [
+          "71349fc043b6b9e730ec5b98ce04baaf",
+          "6bda6bc1895a1c8de7f8340f93b8967d",
+          "239f49223c4813ee355a433ee21a5a9c"
+        ]
+      },
+      "source": "traces",
+      "summary": "checkout: 10 failing POST spans, \"dial tcp: lookup shipping on 127.0.0.11:53: server misbehaving\" (first at 23:38:19, example trace 71349fc043b6b9e7)"
+    },
+    {
+      "id": "ev_metric_1",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:40:06.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 0.3,
+        "peak_at": "2026-11-01T23:41:21.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m]))",
+        "service": "checkout",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "checkout error ratio: 0% before, peaked at 30% at 23:41:21 (rose from 23:40:06)"
+    },
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:41:21.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "28.61% of checkout spans ended in error over the last 3 minutes.",
+          "summary": "checkout error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "checkout",
+          "service_name": "checkout",
+          "severity": "critical"
+        },
+        "service": "checkout",
+        "severity": "critical",
+        "starts_at": "2026-11-01T23:41:21.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on checkout fired: 28.61% of checkout spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_2",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:42:06.510000Z",
+      "payload": {
+        "baseline": 40.00000000000001,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 41.19999999999998,
+        "peak_at": "2026-11-01T23:42:06.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"checkout\"}[2m])))",
+        "service": "checkout",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "checkout p95 latency: 40 ms before, peaked at 41 ms at 23:42:06 (no clear change)"
+    },
+    {
+      "id": "ev_metric_3",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:42:06.510000Z",
+      "payload": {
+        "baseline": 0.33333333333333337,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 0.3666666666666667,
+        "peak_at": "2026-11-01T23:42:06.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m]))",
+        "service": "checkout",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "checkout request rate: 0.3/s before, peaked at 0.4/s at 23:42:06 (no clear change)"
+    }
+  ],
+  "id": "shipping_down-125004700696",
+  "incident": {
+    "services": [
+      "checkout"
+    ],
+    "started_at": "2026-11-01T23:41:21.510000Z",
+    "status": "open",
+    "title": "checkout error rate above 20%"
+  },
+  "recorded_at": "2026-11-01T23:42:16Z",
+  "scenario": {
+    "also_correct": [],
+    "category": "service_down",
+    "name": "shipping_down",
+    "root_cause_service": "shipping"
+  },
+  "source": {
+    "commit": "ff66f434b713da3fa46dd5290ffac2029e1ba06a",
+    "demo_version": "3.1.0",
+    "job_id": 125004700696,
+    "run_id": "41358854289"
+  },
+  "unavailable": {}
+}

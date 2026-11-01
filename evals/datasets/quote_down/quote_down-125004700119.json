@@ -1,0 +1,370 @@
+{
+  "alerts": [
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "100% of shipping spans ended in error over the last 3 minutes.",
+        "summary": "shipping error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "shipping",
+        "service_name": "shipping",
+        "severity": "critical"
+      },
+      "service": "shipping",
+      "severity": "critical",
+      "starts_at": "2026-11-01T23:31:51.510000Z",
+      "status": "firing"
+    },
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "27.89% of checkout spans ended in error over the last 3 minutes.",
+        "summary": "checkout error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "checkout",
+        "service_name": "checkout",
+        "severity": "critical"
+      },
+      "service": "checkout",
+      "severity": "critical",
+      "starts_at": "2026-11-01T23:32:21.510000Z",
+      "status": "firing"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_trace_6",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:29:33.776289Z",
+      "payload": {
+        "count": 57,
+        "error": "error",
+        "max_duration_ms": 227.9,
+        "operation": "router frontend egress",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "6698c8de4c31d1ec4d37ce6d452045bb",
+          "dfc654ec9f9215d7d4b90289cb6b567c",
+          "dbf9b74bccfe0675fbbc9c311d51ae4d"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 57 failing router frontend egress spans, \"error\" (first at 23:29:33, example trace 6698c8de4c31d1ec)"
+    },
+    {
+      "id": "ev_trace_3",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:29:33.788089Z",
+      "payload": {
+        "count": 14,
+        "error": "shipping quote failure: failed POST to shipping service: expected 200, got 500",
+        "max_duration_ms": 206.6,
+        "operation": "oteldemo.CheckoutService/PlaceOrder",
+        "service": "checkout",
+        "trace_ids": [
+          "d2d2b7d6bc8594d018fda44abde83b27",
+          "1c15ba39c41114fab03f0da7751e0c31",
+          "1b343fef7e2beccbe1200d6c43937ee0"
+        ]
+      },
+      "source": "traces",
+      "summary": "checkout: 14 failing oteldemo.CheckoutService/PlaceOrder spans, \"shipping quote failure: failed POST to shipping service: expected 200, got 500\" (first at 23:29:33, example trace d2d2b7d6bc8594d0)"
+    },
+    {
+      "id": "ev_trace_4",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:29:33.836105Z",
+      "payload": {
+        "count": 14,
+        "error": "error",
+        "max_duration_ms": 38.1,
+        "operation": "POST",
+        "service": "checkout",
+        "trace_ids": [
+          "d2d2b7d6bc8594d018fda44abde83b27",
+          "1c15ba39c41114fab03f0da7751e0c31",
+          "1b343fef7e2beccbe1200d6c43937ee0"
+        ]
+      },
+      "source": "traces",
+      "summary": "checkout: 14 failing POST spans, \"error\" (first at 23:29:33, example trace d2d2b7d6bc8594d0)"
+    },
+    {
+      "id": "ev_trace_2",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:29:33.844367Z",
+      "payload": {
+        "count": 56,
+        "error": "Internal Server Error",
+        "max_duration_ms": 27.7,
+        "operation": "POST /get-quote",
+        "service": "shipping",
+        "trace_ids": [
+          "6698c8de4c31d1ec4d37ce6d452045bb",
+          "dfc654ec9f9215d7d4b90289cb6b567c",
+          "dbf9b74bccfe0675fbbc9c311d51ae4d"
+        ]
+      },
+      "source": "traces",
+      "summary": "shipping: 56 failing POST /get-quote spans, \"Internal Server Error\" (first at 23:29:33, example trace 6698c8de4c31d1ec)"
+    },
+    {
+      "id": "ev_trace_1",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:29:33.844679Z",
+      "payload": {
+        "count": 56,
+        "error": "Connect(Resolver(Custom { kind: Uncategorized, error: \"failed to lookup address information: Temporary failure in name resolution\" }))",
+        "max_duration_ms": 27.3,
+        "operation": "POST",
+        "service": "shipping",
+        "trace_ids": [
+          "6698c8de4c31d1ec4d37ce6d452045bb",
+          "dfc654ec9f9215d7d4b90289cb6b567c",
+          "dbf9b74bccfe0675fbbc9c311d51ae4d"
+        ]
+      },
+      "source": "traces",
+      "summary": "shipping: 56 failing POST spans, \"Connect(Resolver(Custom { kind: Uncategorized, error: \"failed to lookup address information: Temporary failure in name resolution\" }))\" (first at 23:29:33, example trace 6698c8de4c31d1ec)"
+    },
+    {
+      "id": "ev_metric_1",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:30:51.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 1.0,
+        "peak_at": "2026-11-01T23:31:51.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"shipping\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"shipping\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"shipping\"}[2m]))",
+        "service": "shipping",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "shipping error ratio: 0% before, peaked at 100% at 23:31:51 (rose from 23:30:51)"
+    },
+    {
+      "id": "ev_metric_4",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:30:51.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 0.2857142857142857,
+        "peak_at": "2026-11-01T23:31:51.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m]))",
+        "service": "checkout",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "checkout error ratio: 0% before, peaked at 29% at 23:31:51 (rose from 23:30:51)"
+    },
+    {
+      "id": "ev_trace_7",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:31:21.017972Z",
+      "payload": {
+        "count": 43,
+        "error": "error",
+        "max_duration_ms": 60.5,
+        "operation": "GET",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "dfc654ec9f9215d7d4b90289cb6b567c",
+          "dbf9b74bccfe0675fbbc9c311d51ae4d",
+          "d0824bf06b364cef97e44eff004f6781"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 43 failing GET spans, \"error\" (first at 23:31:21, example trace dfc654ec9f9215d7)"
+    },
+    {
+      "id": "ev_trace_5",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:31:21.018000Z",
+      "payload": {
+        "count": 86,
+        "error": "error",
+        "max_duration_ms": 59.2,
+        "operation": "GET /api/shipping",
+        "service": "frontend",
+        "trace_ids": [
+          "dfc654ec9f9215d7d4b90289cb6b567c",
+          "dbf9b74bccfe0675fbbc9c311d51ae4d",
+          "d0824bf06b364cef97e44eff004f6781"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 86 failing GET /api/shipping spans, \"error\" (first at 23:31:21, example trace dfc654ec9f9215d7)"
+    },
+    {
+      "id": "ev_trace_8",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:31:21.019000Z",
+      "payload": {
+        "count": 43,
+        "error": "HTTP error: 500 Internal Server Error - Failed to get quote: code: 'Unknown error', message: \"Failed to call quote service: Failed to connect to host: Failed resolving hostname: failed to lookup address information: Temporary failure in name resolution\"",
+        "max_duration_ms": 51.6,
+        "operation": "executing api route (pages) /api/shipping",
+        "service": "frontend",
+        "trace_ids": [
+          "dfc654ec9f9215d7d4b90289cb6b567c",
+          "dbf9b74bccfe0675fbbc9c311d51ae4d",
+          "d0824bf06b364cef97e44eff004f6781"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 43 failing executing api route (pages) /api/shipping spans, \"HTTP error: 500 Internal Server Error - Failed to get quote: code: 'Unknown error', message: \"Failed to call quote service: Failed to connect to host: Failed resolving hostname: failed to lookup address information: Temporary failure in name resolution\"\" (first at 23:31:21, example trace dfc654ec9f9215d7)"
+    },
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:31:51.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "100% of shipping spans ended in error over the last 3 minutes.",
+          "summary": "shipping error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "shipping",
+          "service_name": "shipping",
+          "severity": "critical"
+        },
+        "service": "shipping",
+        "severity": "critical",
+        "starts_at": "2026-11-01T23:31:51.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on shipping fired: 100% of shipping spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_2",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:31:51.510000Z",
+      "payload": {
+        "baseline": 30.005576189363957,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 44.857142857142854,
+        "peak_at": "2026-11-01T23:31:51.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"shipping\"}[2m])))",
+        "service": "shipping",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "shipping p95 latency: 30 ms before, peaked at 45 ms at 23:31:51 (no clear change)"
+    },
+    {
+      "id": "ev_alert_2",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:32:21.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "27.89% of checkout spans ended in error over the last 3 minutes.",
+          "summary": "checkout error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "checkout",
+          "service_name": "checkout",
+          "severity": "critical"
+        },
+        "service": "checkout",
+        "severity": "critical",
+        "starts_at": "2026-11-01T23:32:21.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on checkout fired: 27.89% of checkout spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_3",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:32:51.510000Z",
+      "payload": {
+        "baseline": 0.5598266666666667,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 0.9333333333333333,
+        "peak_at": "2026-11-01T23:32:51.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"shipping\"}[2m]))",
+        "service": "shipping",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "shipping request rate: 0.6/s before, peaked at 0.9/s at 23:32:51 (no clear change)"
+    },
+    {
+      "id": "ev_metric_5",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:32:51.510000Z",
+      "payload": {
+        "baseline": 98.8305260151524,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 190.0000000000001,
+        "peak_at": "2026-11-01T23:32:51.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"checkout\"}[2m])))",
+        "service": "checkout",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "checkout p95 latency: 99 ms before, peaked at 190 ms at 23:32:51 (no clear change)"
+    },
+    {
+      "id": "ev_metric_6",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:32:51.510000Z",
+      "payload": {
+        "baseline": 0.4730666666666667,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 0.3666666666666667,
+        "peak_at": "2026-11-01T23:32:51.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m]))",
+        "service": "checkout",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "checkout request rate: 0.5/s before, peaked at 0.4/s at 23:32:51 (no clear change)"
+    }
+  ],
+  "id": "quote_down-125004700119",
+  "incident": {
+    "services": [
+      "shipping",
+      "checkout"
+    ],
+    "started_at": "2026-11-01T23:31:51.510000Z",
+    "status": "open",
+    "title": "shipping error rate above 20%"
+  },
+  "recorded_at": "2026-11-01T23:33:25Z",
+  "scenario": {
+    "also_correct": [],
+    "category": "service_down",
+    "name": "quote_down",
+    "root_cause_service": "quote"
+  },
+  "source": {
+    "commit": "ff66f434b713da3fa46dd5290ffac2029e1ba06a",
+    "demo_version": "3.1.0",
+    "job_id": 125004700119,
+    "run_id": "41358854289"
+  },
+  "unavailable": {}
+}

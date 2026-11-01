@@ -1,0 +1,410 @@
+{
+  "alerts": [
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "47.08% of checkout spans ended in error over the last 3 minutes.",
+        "summary": "checkout error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "checkout",
+        "service_name": "checkout",
+        "severity": "critical"
+      },
+      "service": "checkout",
+      "severity": "critical",
+      "starts_at": "2026-11-01T23:31:21.510000Z",
+      "status": "firing"
+    },
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "50.51% of frontend spans ended in error over the last 3 minutes.",
+        "summary": "frontend error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "frontend",
+        "service_name": "frontend",
+        "severity": "critical"
+      },
+      "service": "frontend",
+      "severity": "critical",
+      "starts_at": "2026-11-01T23:31:51.510000Z",
+      "status": "firing"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_log_1",
+      "kind": "log",
+      "observed_at": "2026-11-01T23:27:11.746000Z",
+      "payload": {
+        "capped": false,
+        "count": 259,
+        "example": "API request failed",
+        "first_seen": "2026-11-01T23:27:11.746000+00:00",
+        "last_seen": "2026-11-01T23:32:41.381000+00:00",
+        "levels": [
+          "ERROR"
+        ],
+        "lines_scanned": 279,
+        "service": "frontend",
+        "template": "API request failed"
+      },
+      "source": "logs",
+      "summary": "frontend log pattern seen 259 times since 23:27:11: \"API request failed\""
+    },
+    {
+      "id": "ev_trace_1",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:28:26.965000Z",
+      "payload": {
+        "count": 94,
+        "error": "error",
+        "max_duration_ms": 60031.1,
+        "operation": "GET /api/products/[productId]/index",
+        "service": "frontend",
+        "trace_ids": [
+          "f3eb9cdee4aac2dcdf3599edc4f4be74",
+          "eff1f8472059afc005aa4182d2b0002a",
+          "258e41d06f41c872962d2d7a65febb46"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 94 failing GET /api/products/[productId]/index spans, \"error\" (first at 23:28:26, example trace f3eb9cdee4aac2dc)"
+    },
+    {
+      "id": "ev_trace_2",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:28:26.966000Z",
+      "payload": {
+        "count": 49,
+        "error": "error",
+        "max_duration_ms": 60029.5,
+        "operation": "oteldemo.ProductCatalogService/GetProduct",
+        "service": "frontend",
+        "trace_ids": [
+          "f3eb9cdee4aac2dcdf3599edc4f4be74",
+          "eff1f8472059afc005aa4182d2b0002a",
+          "258e41d06f41c872962d2d7a65febb46"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 49 failing oteldemo.ProductCatalogService/GetProduct spans, \"error\" (first at 23:28:26, example trace f3eb9cdee4aac2dc)"
+    },
+    {
+      "id": "ev_trace_4",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:28:57.001000Z",
+      "payload": {
+        "count": 40,
+        "error": "error",
+        "max_duration_ms": 3176.2,
+        "operation": "POST /api/checkout",
+        "service": "frontend",
+        "trace_ids": [
+          "f3eb9cdee4aac2dcdf3599edc4f4be74",
+          "eff1f8472059afc005aa4182d2b0002a",
+          "258e41d06f41c872962d2d7a65febb46"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 40 failing POST /api/checkout spans, \"error\" (first at 23:28:57, example trace f3eb9cdee4aac2dc)"
+    },
+    {
+      "id": "ev_trace_6",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:28:57.002000Z",
+      "payload": {
+        "count": 20,
+        "error": "error",
+        "max_duration_ms": 3173.5,
+        "operation": "oteldemo.CheckoutService/PlaceOrder",
+        "service": "frontend",
+        "trace_ids": [
+          "f3eb9cdee4aac2dcdf3599edc4f4be74",
+          "eff1f8472059afc005aa4182d2b0002a",
+          "258e41d06f41c872962d2d7a65febb46"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 20 failing oteldemo.CheckoutService/PlaceOrder spans, \"error\" (first at 23:28:57, example trace f3eb9cdee4aac2dc)"
+    },
+    {
+      "id": "ev_log_2",
+      "kind": "log",
+      "observed_at": "2026-11-01T23:29:00.176000Z",
+      "payload": {
+        "capped": false,
+        "count": 20,
+        "example": "Checkout failed to place order",
+        "first_seen": "2026-11-01T23:29:00.176000+00:00",
+        "last_seen": "2026-11-01T23:32:34.518000+00:00",
+        "levels": [
+          "ERROR"
+        ],
+        "lines_scanned": 279,
+        "service": "frontend",
+        "template": "Checkout failed to place order"
+      },
+      "source": "logs",
+      "summary": "frontend log pattern seen 20 times since 23:29:00: \"Checkout failed to place order\""
+    },
+    {
+      "id": "ev_trace_3",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:29:36.799000Z",
+      "payload": {
+        "count": 43,
+        "error": "14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 172.18.0.27:3550. Resolution note: ",
+        "max_duration_ms": 4.7,
+        "operation": "executing api route (pages) /api/products/[productId]/index",
+        "service": "frontend",
+        "trace_ids": [
+          "f3eb9cdee4aac2dcdf3599edc4f4be74",
+          "eff1f8472059afc005aa4182d2b0002a",
+          "258e41d06f41c872962d2d7a65febb46"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 43 failing executing api route (pages) /api/products/[productId]/index spans, \"14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 172.18.0.27:3550. Resolution note: \" (first at 23:29:36, example trace f3eb9cdee4aac2dc)"
+    },
+    {
+      "id": "ev_metric_4",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:29:51.510000Z",
+      "payload": {
+        "baseline": 0.18171461449318482,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 0.6311075840524722,
+        "peak_at": "2026-11-01T23:31:51.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m]))",
+        "service": "frontend",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "frontend error ratio: 18% before, peaked at 63% at 23:31:51 (rose from 23:29:51)"
+    },
+    {
+      "id": "ev_metric_1",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:30:06.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 0.5,
+        "peak_at": "2026-11-01T23:31:21.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m]))",
+        "service": "checkout",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "checkout error ratio: 0% before, peaked at 50% at 23:31:21 (rose from 23:30:06)"
+    },
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:31:21.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "47.08% of checkout spans ended in error over the last 3 minutes.",
+          "summary": "checkout error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "checkout",
+          "service_name": "checkout",
+          "severity": "critical"
+        },
+        "service": "checkout",
+        "severity": "critical",
+        "starts_at": "2026-11-01T23:31:21.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on checkout fired: 47.08% of checkout spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_3",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:31:21.510000Z",
+      "payload": {
+        "baseline": 0.24386833333333333,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 0.3333333333333333,
+        "peak_at": "2026-11-01T23:31:21.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m]))",
+        "service": "checkout",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "checkout request rate: 0.2/s before, peaked at 0.3/s at 23:31:21 (no clear change)"
+    },
+    {
+      "id": "ev_trace_5",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:31:32.662000Z",
+      "payload": {
+        "count": 40,
+        "error": "error",
+        "max_duration_ms": 6.0,
+        "operation": "GET /api/products/index",
+        "service": "frontend",
+        "trace_ids": [
+          "7a1ae108638c2ba37c515ea1170e5e47",
+          "1f8059e814039281afc787add48cf9a2",
+          "bfece39d3af89224c5a70dd79de6bd69"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 40 failing GET /api/products/index spans, \"error\" (first at 23:31:32, example trace 7a1ae108638c2ba3)"
+    },
+    {
+      "id": "ev_trace_7",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:31:32.663000Z",
+      "payload": {
+        "count": 20,
+        "error": "error",
+        "max_duration_ms": 1.0,
+        "operation": "oteldemo.ProductCatalogService/ListProducts",
+        "service": "frontend",
+        "trace_ids": [
+          "7a1ae108638c2ba37c515ea1170e5e47",
+          "1f8059e814039281afc787add48cf9a2",
+          "bfece39d3af89224c5a70dd79de6bd69"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 20 failing oteldemo.ProductCatalogService/ListProducts spans, \"error\" (first at 23:31:32, example trace 7a1ae108638c2ba3)"
+    },
+    {
+      "id": "ev_trace_8",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:31:32.663000Z",
+      "payload": {
+        "count": 20,
+        "error": "14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 172.18.0.27:3550. Resolution note: ",
+        "max_duration_ms": 4.7,
+        "operation": "executing api route (pages) /api/products/index",
+        "service": "frontend",
+        "trace_ids": [
+          "7a1ae108638c2ba37c515ea1170e5e47",
+          "1f8059e814039281afc787add48cf9a2",
+          "bfece39d3af89224c5a70dd79de6bd69"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 20 failing executing api route (pages) /api/products/index spans, \"14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 172.18.0.27:3550. Resolution note: \" (first at 23:31:32, example trace 7a1ae108638c2ba3)"
+    },
+    {
+      "id": "ev_alert_2",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:31:51.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "50.51% of frontend spans ended in error over the last 3 minutes.",
+          "summary": "frontend error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "frontend",
+          "service_name": "frontend",
+          "severity": "critical"
+        },
+        "service": "frontend",
+        "severity": "critical",
+        "starts_at": "2026-11-01T23:31:51.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on frontend fired: 50.51% of frontend spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_6",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:31:51.510000Z",
+      "payload": {
+        "baseline": 9.266666666666667,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 12.42458,
+        "peak_at": "2026-11-01T23:31:51.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m]))",
+        "service": "frontend",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "frontend request rate: 9.3/s before, peaked at 12.4/s at 23:31:51 (no clear change)"
+    },
+    {
+      "id": "ev_metric_2",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:32:06.510000Z",
+      "payload": {
+        "baseline": 2436.790000000002,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 45.55555555555556,
+        "peak_at": "2026-11-01T23:32:06.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"checkout\"}[2m])))",
+        "service": "checkout",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "checkout p95 latency: 2437 ms before, peaked at 46 ms at 23:32:06 (no clear change)"
+    },
+    {
+      "id": "ev_metric_5",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:32:06.510000Z",
+      "payload": {
+        "baseline": 71.66666666666703,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 41.755102040816304,
+        "peak_at": "2026-11-01T23:32:06.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\"}[2m])))",
+        "service": "frontend",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "frontend p95 latency: 72 ms before, peaked at 42 ms at 23:32:06 (no clear change)"
+    }
+  ],
+  "id": "product_catalog_down-125004700139",
+  "incident": {
+    "services": [
+      "checkout",
+      "frontend"
+    ],
+    "started_at": "2026-11-01T23:31:21.510000Z",
+    "status": "open",
+    "title": "checkout error rate above 20%"
+  },
+  "recorded_at": "2026-11-01T23:32:47Z",
+  "scenario": {
+    "also_correct": [],
+    "category": "service_down",
+    "name": "product_catalog_down",
+    "root_cause_service": "product-catalog"
+  },
+  "source": {
+    "commit": "ff66f434b713da3fa46dd5290ffac2029e1ba06a",
+    "demo_version": "3.1.0",
+    "job_id": 125004700139,
+    "run_id": "41358854289"
+  },
+  "unavailable": {}
+}

@@ -1,0 +1,430 @@
+{
+  "alerts": [
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "68.09% of recommendation spans ended in error over the last 3 minutes.",
+        "summary": "recommendation error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "recommendation",
+        "service_name": "recommendation",
+        "severity": "critical"
+      },
+      "service": "recommendation",
+      "severity": "critical",
+      "starts_at": "2026-11-01T23:27:51.510000Z",
+      "status": "firing"
+    },
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "43.72% of frontend spans ended in error over the last 3 minutes.",
+        "summary": "frontend error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "frontend",
+        "service_name": "frontend",
+        "severity": "critical"
+      },
+      "service": "frontend",
+      "severity": "critical",
+      "starts_at": "2026-11-01T23:27:51.510000Z",
+      "status": "firing"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_trace_1",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:24:43.015000Z",
+      "payload": {
+        "count": 99,
+        "error": "error",
+        "max_duration_ms": 15293.4,
+        "operation": "GET /api/recommendations",
+        "service": "frontend",
+        "trace_ids": [
+          "e4c6052562a710aec91e6ad4fb0fd32c",
+          "1438c1b3e3c1157c9b64974049292a6c",
+          "ff88083982ba98e8857ad302fd57ae52"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 99 failing GET /api/recommendations spans, \"error\" (first at 23:24:43, example trace e4c6052562a710ae)"
+    },
+    {
+      "id": "ev_trace_3",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:24:43.017000Z",
+      "payload": {
+        "count": 50,
+        "error": "error",
+        "max_duration_ms": 15291.1,
+        "operation": "oteldemo.RecommendationService/ListRecommendations",
+        "service": "frontend",
+        "trace_ids": [
+          "e4c6052562a710aec91e6ad4fb0fd32c",
+          "1438c1b3e3c1157c9b64974049292a6c",
+          "ff88083982ba98e8857ad302fd57ae52"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 50 failing oteldemo.RecommendationService/ListRecommendations spans, \"error\" (first at 23:24:43, example trace e4c6052562a710ae)"
+    },
+    {
+      "id": "ev_log_2",
+      "kind": "log",
+      "observed_at": "2026-11-01T23:24:58.261142Z",
+      "payload": {
+        "capped": false,
+        "count": 58,
+        "example": "Exception calling application: <_InactiveRpcError of RPC that terminated with:\n\tstatus = StatusCode.UNAVAILABLE\n\tdetails = \"failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.26:3550: tcp handshaker shutdown\"\n\tdebug_error_string = \"UNAVAILABLE:failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.26:3550: tcp handshaker shutdown\"\n>",
+        "first_seen": "2026-11-01T23:24:58.261142+00:00",
+        "last_seen": "2026-11-01T23:28:45.636721+00:00",
+        "levels": [
+          "ERROR"
+        ],
+        "lines_scanned": 286,
+        "service": "recommendation",
+        "template": "Exception calling application: <_InactiveRpcError of RPC that terminated with: status = StatusCode.UNAVAILABLE details = <str> debug_error_string = <str> >"
+      },
+      "source": "logs",
+      "summary": "recommendation log pattern seen 58 times since 23:24:58: \"Exception calling application: <_InactiveRpcError of RPC that terminated with: status = StatusCode.UNAVAILABLE details = <str> debug_error_string = <str> >\""
+    },
+    {
+      "id": "ev_log_1",
+      "kind": "log",
+      "observed_at": "2026-11-01T23:24:58.284000Z",
+      "payload": {
+        "capped": false,
+        "count": 213,
+        "example": "API request failed",
+        "first_seen": "2026-11-01T23:24:58.284000+00:00",
+        "last_seen": "2026-11-01T23:28:45.640000+00:00",
+        "levels": [
+          "ERROR"
+        ],
+        "lines_scanned": 286,
+        "service": "frontend",
+        "template": "API request failed"
+      },
+      "source": "logs",
+      "summary": "frontend log pattern seen 213 times since 23:24:58: \"API request failed\""
+    },
+    {
+      "id": "ev_log_3",
+      "kind": "log",
+      "observed_at": "2026-11-01T23:25:34.704000Z",
+      "payload": {
+        "capped": false,
+        "count": 15,
+        "example": "Checkout failed to place order",
+        "first_seen": "2026-11-01T23:25:34.704000+00:00",
+        "last_seen": "2026-11-01T23:28:44.285000+00:00",
+        "levels": [
+          "ERROR"
+        ],
+        "lines_scanned": 286,
+        "service": "frontend",
+        "template": "Checkout failed to place order"
+      },
+      "source": "logs",
+      "summary": "frontend log pattern seen 15 times since 23:25:34: \"Checkout failed to place order\""
+    },
+    {
+      "id": "ev_trace_6",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:26:06.660000Z",
+      "payload": {
+        "count": 49,
+        "error": "2 UNKNOWN: Exception calling application: <_InactiveRpcError of RPC that terminated with:\n\tstatus = StatusCode.UNAVAILABLE\n\tdetails = \"failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.26:3550: Failed to connect to remote host: getsockopt(SO_ERROR): Host is unreachable\"\n\tdebug_e",
+        "max_duration_ms": 37.2,
+        "operation": "executing api route (pages) /api/recommendations",
+        "service": "frontend",
+        "trace_ids": [
+          "e4c6052562a710aec91e6ad4fb0fd32c",
+          "1438c1b3e3c1157c9b64974049292a6c",
+          "ff88083982ba98e8857ad302fd57ae52"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 49 failing executing api route (pages) /api/recommendations spans, \"2 UNKNOWN: Exception calling application: <_InactiveRpcError of RPC that terminated with:\n\tstatus = StatusCode.UNAVAILABLE\n\tdetails = \"failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.26:3550: Failed to connect to remote host: getsockopt(SO_ERROR): Host is unreachable\"\n\tdebug_e\" (first at 23:26:06, example trace e4c6052562a710ae)"
+    },
+    {
+      "id": "ev_trace_5",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:26:06.668484Z",
+      "payload": {
+        "count": 49,
+        "error": "_InactiveRpcError: <_InactiveRpcError of RPC that terminated with:\n\tstatus = StatusCode.UNAVAILABLE\n\tdetails = \"failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.26:3550: Failed to connect to remote host: getsockopt(SO_ERROR): Host is unreachable\"\n\tdebug_error_string = \"UNAVAILA",
+        "max_duration_ms": 10.5,
+        "operation": "get_product_list",
+        "service": "recommendation",
+        "trace_ids": [
+          "e4c6052562a710aec91e6ad4fb0fd32c",
+          "1438c1b3e3c1157c9b64974049292a6c",
+          "ff88083982ba98e8857ad302fd57ae52"
+        ]
+      },
+      "source": "traces",
+      "summary": "recommendation: 49 failing get_product_list spans, \"_InactiveRpcError: <_InactiveRpcError of RPC that terminated with:\n\tstatus = StatusCode.UNAVAILABLE\n\tdetails = \"failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.26:3550: Failed to connect to remote host: getsockopt(SO_ERROR): Host is unreachable\"\n\tdebug_error_string = \"UNAVAILA\" (first at 23:26:06, example trace e4c6052562a710ae)"
+    },
+    {
+      "id": "ev_trace_4",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:26:06.668959Z",
+      "payload": {
+        "count": 49,
+        "error": "_InactiveRpcError: <_InactiveRpcError of RPC that terminated with:\n\tstatus = StatusCode.UNAVAILABLE\n\tdetails = \"failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.26:3550: Failed to connect to remote host: getsockopt(SO_ERROR): Host is unreachable\"\n\tdebug_error_string = \"UNAVAILA",
+        "max_duration_ms": 6.0,
+        "operation": "oteldemo.ProductCatalogService/ListProducts",
+        "service": "recommendation",
+        "trace_ids": [
+          "e4c6052562a710aec91e6ad4fb0fd32c",
+          "1438c1b3e3c1157c9b64974049292a6c",
+          "ff88083982ba98e8857ad302fd57ae52"
+        ]
+      },
+      "source": "traces",
+      "summary": "recommendation: 49 failing oteldemo.ProductCatalogService/ListProducts spans, \"_InactiveRpcError: <_InactiveRpcError of RPC that terminated with:\n\tstatus = StatusCode.UNAVAILABLE\n\tdetails = \"failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.26:3550: Failed to connect to remote host: getsockopt(SO_ERROR): Host is unreachable\"\n\tdebug_error_string = \"UNAVAILA\" (first at 23:26:06, example trace e4c6052562a710ae)"
+    },
+    {
+      "id": "ev_metric_1",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:26:36.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 0.6666666666666666,
+        "peak_at": "2026-11-01T23:27:51.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"recommendation\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"recommendation\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"recommendation\"}[2m]))",
+        "service": "recommendation",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "recommendation error ratio: 0% before, peaked at 67% at 23:27:51 (rose from 23:26:36)"
+    },
+    {
+      "id": "ev_metric_4",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:26:36.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 0.45345467486908336,
+        "peak_at": "2026-11-01T23:28:21.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m]))",
+        "service": "frontend",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "frontend error ratio: 0% before, peaked at 45% at 23:28:21 (rose from 23:26:36)"
+    },
+    {
+      "id": "ev_trace_7",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:27:46.439000Z",
+      "payload": {
+        "count": 28,
+        "error": "error",
+        "max_duration_ms": 6.1,
+        "operation": "GET /api/products/index",
+        "service": "frontend",
+        "trace_ids": [
+          "b975ede03c5dc00af91eec4627f1fd83",
+          "5cff8bbfe56c63d8da8cb7c5b4271eb5",
+          "8ef39a00ceaf1fe3baf0f73fdd459b3c"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 28 failing GET /api/products/index spans, \"error\" (first at 23:27:46, example trace b975ede03c5dc00a)"
+    },
+    {
+      "id": "ev_trace_2",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:27:47.402000Z",
+      "payload": {
+        "count": 52,
+        "error": "error",
+        "max_duration_ms": 4.1,
+        "operation": "GET /api/products/[productId]/index",
+        "service": "frontend",
+        "trace_ids": [
+          "eafd9c1897257707c63c03acd4df690e",
+          "06967214b2fb4a0a1e073449347849fd",
+          "390243bb44cd01975fcf469c1c0eedb9"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 52 failing GET /api/products/[productId]/index spans, \"error\" (first at 23:27:47, example trace eafd9c1897257707)"
+    },
+    {
+      "id": "ev_trace_8",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:27:47.403000Z",
+      "payload": {
+        "count": 26,
+        "error": "error",
+        "max_duration_ms": 0.5,
+        "operation": "oteldemo.ProductCatalogService/GetProduct",
+        "service": "frontend",
+        "trace_ids": [
+          "eafd9c1897257707c63c03acd4df690e",
+          "06967214b2fb4a0a1e073449347849fd",
+          "390243bb44cd01975fcf469c1c0eedb9"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 26 failing oteldemo.ProductCatalogService/GetProduct spans, \"error\" (first at 23:27:47, example trace eafd9c1897257707)"
+    },
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:27:51.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "68.09% of recommendation spans ended in error over the last 3 minutes.",
+          "summary": "recommendation error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "recommendation",
+          "service_name": "recommendation",
+          "severity": "critical"
+        },
+        "service": "recommendation",
+        "severity": "critical",
+        "starts_at": "2026-11-01T23:27:51.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on recommendation fired: 68.09% of recommendation spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_alert_2",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:27:51.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "43.72% of frontend spans ended in error over the last 3 minutes.",
+          "summary": "frontend error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "frontend",
+          "service_name": "frontend",
+          "severity": "critical"
+        },
+        "service": "frontend",
+        "severity": "critical",
+        "starts_at": "2026-11-01T23:27:51.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on frontend fired: 43.72% of frontend spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_2",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:27:51.510000Z",
+      "payload": {
+        "baseline": 15000.0,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 37.14285714285712,
+        "peak_at": "2026-11-01T23:27:51.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"recommendation\"}[2m])))",
+        "service": "recommendation",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "recommendation p95 latency: 15000 ms before, peaked at 37 ms at 23:27:51 (no clear change)"
+    },
+    {
+      "id": "ev_metric_5",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:27:51.510000Z",
+      "payload": {
+        "baseline": 98.79032258064524,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 42.86830764735956,
+        "peak_at": "2026-11-01T23:27:51.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\"}[2m])))",
+        "service": "frontend",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "frontend p95 latency: 99 ms before, peaked at 43 ms at 23:27:51 (no clear change)"
+    },
+    {
+      "id": "ev_metric_6",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:28:21.510000Z",
+      "payload": {
+        "baseline": 10.583333333333334,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 10.490133333333333,
+        "peak_at": "2026-11-01T23:28:21.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m]))",
+        "service": "frontend",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "frontend request rate: 10.6/s before, peaked at 10.5/s at 23:28:21 (no clear change)"
+    },
+    {
+      "id": "ev_metric_3",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:28:36.510000Z",
+      "payload": {
+        "baseline": 0.6176416666666668,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 0.8,
+        "peak_at": "2026-11-01T23:28:36.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"recommendation\"}[2m]))",
+        "service": "recommendation",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "recommendation request rate: 0.6/s before, peaked at 0.8/s at 23:28:36 (no clear change)"
+    }
+  ],
+  "id": "product_catalog_down-125004700074",
+  "incident": {
+    "services": [
+      "recommendation",
+      "frontend"
+    ],
+    "started_at": "2026-11-01T23:27:51.510000Z",
+    "status": "open",
+    "title": "recommendation error rate above 20%"
+  },
+  "recorded_at": "2026-11-01T23:28:50Z",
+  "scenario": {
+    "also_correct": [],
+    "category": "service_down",
+    "name": "product_catalog_down",
+    "root_cause_service": "product-catalog"
+  },
+  "source": {
+    "commit": "ff66f434b713da3fa46dd5290ffac2029e1ba06a",
+    "demo_version": "3.1.0",
+    "job_id": 125004700074,
+    "run_id": "41358854289"
+  },
+  "unavailable": {}
+}

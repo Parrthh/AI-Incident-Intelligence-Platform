@@ -74,6 +74,7 @@ jobs:
       GEMINI_API_KEY: ${{ (inputs.llm || 'gemini') == 'gemini' && secrets.GEMINI_API_KEY || '' }}
       IIP_DEMO_WEBHOOK_TOKEN: ${{ (inputs.forward || 'true') == 'true' && secrets.IIP_DEMO_WEBHOOK_TOKEN || '' }}
       IIP_IMAGE: iip:chaos
+      CHAOS_REPEAT: ${{ matrix.run }}
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7

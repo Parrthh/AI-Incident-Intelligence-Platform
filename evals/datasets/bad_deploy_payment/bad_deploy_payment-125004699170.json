@@ -1,0 +1,309 @@
+{
+  "alerts": [
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "100% of payment spans ended in error over the last 3 minutes.",
+        "summary": "payment error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "payment",
+        "service_name": "payment",
+        "severity": "critical"
+      },
+      "service": "payment",
+      "severity": "critical",
+      "starts_at": "2026-11-01T22:56:21.510000Z",
+      "status": "firing"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_deploy_1",
+      "kind": "deploy",
+      "observed_at": "2026-11-01T22:53:17.578550Z",
+      "payload": {
+        "commit_sha": null,
+        "description": "chaos deploy",
+        "metadata": {},
+        "service": "payment",
+        "version": "v2.7.0"
+      },
+      "source": "deploys",
+      "summary": "payment deployed v2.7.0, 3 min before the incident started"
+    },
+    {
+      "id": "ev_trace_6",
+      "kind": "trace",
+      "observed_at": "2026-11-01T22:53:37.522935Z",
+      "payload": {
+        "count": 16,
+        "error": "error",
+        "max_duration_ms": 36.0,
+        "operation": "POST",
+        "service": "load-generator",
+        "trace_ids": [
+          "8fa9ae130a4e02b2439a38c3d0828e78",
+          "c661d360b422e3a042ac21e7c69a0dcb",
+          "0edc6f8697e54b23dde4ddb605aff576"
+        ]
+      },
+      "source": "traces",
+      "summary": "load-generator: 16 failing POST spans, \"error\" (first at 22:53:37, example trace 8fa9ae130a4e02b2)"
+    },
+    {
+      "id": "ev_trace_3",
+      "kind": "trace",
+      "observed_at": "2026-11-01T22:53:37.523296Z",
+      "payload": {
+        "count": 16,
+        "error": "error",
+        "max_duration_ms": 33.4,
+        "operation": "router frontend egress",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "8fa9ae130a4e02b2439a38c3d0828e78",
+          "c661d360b422e3a042ac21e7c69a0dcb",
+          "0edc6f8697e54b23dde4ddb605aff576"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 16 failing router frontend egress spans, \"error\" (first at 22:53:37, example trace 8fa9ae130a4e02b2)"
+    },
+    {
+      "id": "ev_trace_7",
+      "kind": "trace",
+      "observed_at": "2026-11-01T22:53:37.524000Z",
+      "payload": {
+        "count": 16,
+        "error": "13 INTERNAL: failed to charge card: could not charge the card: rpc error: code = Unknown desc = Payment request failed. Invalid token. demo.user_context.loyalty_level=gold",
+        "max_duration_ms": 32.4,
+        "operation": "executing api route (pages) /api/checkout",
+        "service": "frontend",
+        "trace_ids": [
+          "8fa9ae130a4e02b2439a38c3d0828e78",
+          "c661d360b422e3a042ac21e7c69a0dcb",
+          "0edc6f8697e54b23dde4ddb605aff576"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 16 failing executing api route (pages) /api/checkout spans, \"13 INTERNAL: failed to charge card: could not charge the card: rpc error: code = Unknown desc = Payment request failed. Invalid token. demo.user_context.loyalty_level=gold\" (first at 22:53:37, example trace 8fa9ae130a4e02b2)"
+    },
+    {
+      "id": "ev_trace_8",
+      "kind": "trace",
+      "observed_at": "2026-11-01T22:53:37.524000Z",
+      "payload": {
+        "count": 16,
+        "error": "error",
+        "max_duration_ms": 31.6,
+        "operation": "oteldemo.CheckoutService/PlaceOrder",
+        "service": "frontend",
+        "trace_ids": [
+          "8fa9ae130a4e02b2439a38c3d0828e78",
+          "c661d360b422e3a042ac21e7c69a0dcb",
+          "0edc6f8697e54b23dde4ddb605aff576"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 16 failing oteldemo.CheckoutService/PlaceOrder spans, \"error\" (first at 22:53:37, example trace 8fa9ae130a4e02b2)"
+    },
+    {
+      "id": "ev_trace_5",
+      "kind": "trace",
+      "observed_at": "2026-11-01T22:53:37.524739Z",
+      "payload": {
+        "count": 16,
+        "error": "failed to charge card: could not charge the card: rpc error: code = Unknown desc = Payment request failed. Invalid token. demo.user_context.loyalty_level=gold",
+        "max_duration_ms": 30.4,
+        "operation": "oteldemo.CheckoutService/PlaceOrder",
+        "service": "checkout",
+        "trace_ids": [
+          "8fa9ae130a4e02b2439a38c3d0828e78",
+          "c661d360b422e3a042ac21e7c69a0dcb",
+          "0edc6f8697e54b23dde4ddb605aff576"
+        ]
+      },
+      "source": "traces",
+      "summary": "checkout: 16 failing oteldemo.CheckoutService/PlaceOrder spans, \"failed to charge card: could not charge the card: rpc error: code = Unknown desc = Payment request failed. Invalid token. demo.user_context.loyalty_level=gold\" (first at 22:53:37, example trace 8fa9ae130a4e02b2)"
+    },
+    {
+      "id": "ev_trace_4",
+      "kind": "trace",
+      "observed_at": "2026-11-01T22:53:37.544073Z",
+      "payload": {
+        "count": 16,
+        "error": "Payment request failed. Invalid token. demo.user_context.loyalty_level=gold",
+        "max_duration_ms": 6.7,
+        "operation": "oteldemo.PaymentService/Charge",
+        "service": "checkout",
+        "trace_ids": [
+          "8fa9ae130a4e02b2439a38c3d0828e78",
+          "c661d360b422e3a042ac21e7c69a0dcb",
+          "0edc6f8697e54b23dde4ddb605aff576"
+        ]
+      },
+      "source": "traces",
+      "summary": "checkout: 16 failing oteldemo.PaymentService/Charge spans, \"Payment request failed. Invalid token. demo.user_context.loyalty_level=gold\" (first at 22:53:37, example trace 8fa9ae130a4e02b2)"
+    },
+    {
+      "id": "ev_trace_1",
+      "kind": "trace",
+      "observed_at": "2026-11-01T22:53:37.545000Z",
+      "payload": {
+        "count": 16,
+        "error": "Payment request failed. Invalid token. demo.user_context.loyalty_level=gold",
+        "max_duration_ms": 3.6,
+        "operation": "charge",
+        "service": "payment",
+        "trace_ids": [
+          "8fa9ae130a4e02b2439a38c3d0828e78",
+          "c661d360b422e3a042ac21e7c69a0dcb",
+          "0edc6f8697e54b23dde4ddb605aff576"
+        ]
+      },
+      "source": "traces",
+      "summary": "payment: 16 failing charge spans, \"Payment request failed. Invalid token. demo.user_context.loyalty_level=gold\" (first at 22:53:37, example trace 8fa9ae130a4e02b2)"
+    },
+    {
+      "id": "ev_trace_2",
+      "kind": "trace",
+      "observed_at": "2026-11-01T22:53:37.545000Z",
+      "payload": {
+        "count": 16,
+        "error": "Payment request failed. Invalid token. demo.user_context.loyalty_level=gold",
+        "max_duration_ms": 4.5,
+        "operation": "oteldemo.PaymentService/Charge",
+        "service": "payment",
+        "trace_ids": [
+          "8fa9ae130a4e02b2439a38c3d0828e78",
+          "c661d360b422e3a042ac21e7c69a0dcb",
+          "0edc6f8697e54b23dde4ddb605aff576"
+        ]
+      },
+      "source": "traces",
+      "summary": "payment: 16 failing oteldemo.PaymentService/Charge spans, \"Payment request failed. Invalid token. demo.user_context.loyalty_level=gold\" (first at 22:53:37, example trace 8fa9ae130a4e02b2)"
+    },
+    {
+      "id": "ev_log_1",
+      "kind": "log",
+      "observed_at": "2026-11-01T22:53:37.549000Z",
+      "payload": {
+        "capped": false,
+        "count": 16,
+        "example": "Payment request failed. Invalid token. demo.user_context.loyalty_level=gold",
+        "first_seen": "2026-11-01T22:53:37.549000+00:00",
+        "last_seen": "2026-11-01T22:56:58.866000+00:00",
+        "levels": [
+          "WARN"
+        ],
+        "lines_scanned": 16,
+        "service": "payment",
+        "template": "Payment request failed. Invalid token. demo.user_context.loyalty_level=<val>"
+      },
+      "source": "logs",
+      "summary": "payment log pattern seen 16 times since 22:53:37: \"Payment request failed. Invalid token. demo.user_context.loyalty_level=<val>\""
+    },
+    {
+      "id": "ev_metric_1",
+      "kind": "metric",
+      "observed_at": "2026-11-01T22:55:21.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 1.0,
+        "peak_at": "2026-11-01T22:56:21.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"payment\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"payment\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"payment\"}[2m]))",
+        "service": "payment",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "payment error ratio: 0% before, peaked at 100% at 22:56:21 (rose from 22:55:21)"
+    },
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "observed_at": "2026-11-01T22:56:21.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "100% of payment spans ended in error over the last 3 minutes.",
+          "summary": "payment error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "payment",
+          "service_name": "payment",
+          "severity": "critical"
+        },
+        "service": "payment",
+        "severity": "critical",
+        "starts_at": "2026-11-01T22:56:21.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on payment fired: 100% of payment spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_2",
+      "kind": "metric",
+      "observed_at": "2026-11-01T22:56:21.510000Z",
+      "payload": {
+        "baseline": 3.6999999999999997,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 1.9,
+        "peak_at": "2026-11-01T22:56:21.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"payment\"}[2m])))",
+        "service": "payment",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "payment p95 latency: 4 ms before, peaked at 2 ms at 22:56:21 (no clear change)"
+    },
+    {
+      "id": "ev_metric_3",
+      "kind": "metric",
+      "observed_at": "2026-11-01T22:56:21.510000Z",
+      "payload": {
+        "baseline": 0.15869227235384475,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 0.1666694444907415,
+        "peak_at": "2026-11-01T22:56:21.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"payment\"}[2m]))",
+        "service": "payment",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "payment request rate: 0.2/s before, peaked at 0.2/s at 22:56:21 (no clear change)"
+    }
+  ],
+  "id": "bad_deploy_payment-125004699170",
+  "incident": {
+    "services": [
+      "payment"
+    ],
+    "started_at": "2026-11-01T22:56:21.510000Z",
+    "status": "open",
+    "title": "payment error rate above 20%"
+  },
+  "recorded_at": "2026-11-01T22:57:22Z",
+  "scenario": {
+    "also_correct": [],
+    "category": "bad_deploy",
+    "name": "bad_deploy_payment",
+    "root_cause_service": "payment"
+  },
+  "source": {
+    "commit": "ff66f434b713da3fa46dd5290ffac2029e1ba06a",
+    "demo_version": "3.1.0",
+    "job_id": 125004699170,
+    "run_id": "41358854289"
+  },
+  "unavailable": {}
+}

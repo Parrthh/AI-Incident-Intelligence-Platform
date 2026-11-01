@@ -54,6 +54,10 @@ def main() -> None:
         if job.get("conclusion") != "success" or not job["name"].startswith("chaos"):
             continue
         for snapshot in snapshots_in_log(_get(f"{API}/actions/jobs/{job['id']}/logs").decode()):
+            # Repeats of a scenario share a run ID; the job ID tells them apart.
+            if not snapshot["id"].endswith(f"-{job['id']}"):
+                snapshot["id"] = f"{snapshot['scenario']['name']}-{job['id']}"
+            snapshot["source"]["job_id"] = job["id"]
             path = Path(args.out) / snapshot["scenario"]["name"] / f"{snapshot['id']}.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n")

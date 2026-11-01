@@ -438,7 +438,7 @@ def export_snapshot(incident: dict[str, Any], scenario: Scenario, run_dir: Path)
     run_id = os.environ.get("GITHUB_RUN_ID", "local")
     attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
     snapshot = {
-        "id": f"{scenario.name}-{run_id}-{attempt}",
+        "id": f"{scenario.name}-{run_id}-{attempt}-{os.environ.get('CHAOS_REPEAT', '1')}",
         "scenario": scenario.truth(),
         "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "source": {
