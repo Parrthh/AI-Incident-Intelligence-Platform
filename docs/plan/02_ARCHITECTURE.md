@@ -80,7 +80,7 @@ Interfaces so other backends can be added later:
 - Prompts live in versioned files (`prompts/analyze_v3.md`), and the version is stored with every analysis.
 
 ### Web UI
-- React + TypeScript + Vite, TanStack Query for data fetching.
+- M1: server-rendered pages (Jinja2) using the same query layer as the JSON API (ADR-0007). React + TypeScript + Vite to be reconsidered in M3 when the timeline needs interactivity.
 - Pages: incident list (filter by status, service), incident detail (timeline, alerts, evidence, analysis with clickable citations, similar incidents, feedback buttons), settings (read-only view of config in MVP).
 - Built as static files and served by the API container, so self-hosting stays one container plus Postgres and Redis.
 

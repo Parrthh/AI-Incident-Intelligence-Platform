@@ -53,6 +53,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 | 0004 | Free-tier hosted demo (Render + Neon + Upstash); limits recorded | accepted | 2026-11-01 |
 | 0005 | LLM provider interface, Gemini first | accepted | 2026-11-01 |
 | 0006 | pgvector over a dedicated vector DB | planned (M5) | |
+| 0007 | Server-rendered UI first, React when interactivity needs it | accepted | 2026-11-01 |
 
 ## Known tech debt
 

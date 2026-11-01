@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ incident.title }}{% endblock %}
+{% block head %}
+{% if summary and summary.status == "pending" %}
+<!-- The summary is still being written; reload until it's done. -->
+<meta http-equiv="refresh" content="5">
+{% endif %}
+{% endblock %}
+{% block content %}
+<style>
+  .head { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .summary { padding: 16px 18px; margin-top: 20px; }
+  .summary p { margin: 6px 0 0; }
+  .summary .label { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .alerts { list-style: none; margin: 0; padding: 0; }
+  .alerts li { padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .alerts li:last-child { border-bottom: 0; }
+  .alert-top { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .alert-name { font-weight: 600; }
+  .alert-body { margin-top: 8px; display: grid; gap: 8px; }
+  .alert-body .k { font-size: .8rem; color: var(--muted); }
+  .times { font-size: .88rem; }
+</style>
+<p><a href="/incidents">← All incidents</a></p>
+<div class="head">
+  <h1>{{ incident.title }}</h1>
+  <span class="pill {{ incident.status }}">{{ incident.status }}</span>
+</div>
+<div class="meta muted">
+  {% if incident.severity %}<span class="pill sev">{{ incident.severity }}</span>{% endif %}
+  {% for s in incident.services %}<span class="pill neutral">{{ s }}</span>{% endfor %}
+  <span class="times">started {{ incident.started_at.strftime("%Y-%m-%d %H:%M:%S") }}
+  {% if incident.resolved_at %} · resolved {{ incident.resolved_at.strftime("%Y-%m-%d %H:%M:%S") }}{% endif %}</span>
+</div>
+
+<div class="card summary">
+  <div class="label">AI summary</div>
+  {% if not summary %}
+    <p class="muted">No summary for this incident (no LLM configured when it arrived).</p>
+  {% elif summary.status == "pending" %}
+    <p class="muted">Writing a summary… this page refreshes automatically.</p>
+  {% elif summary.status == "failed" %}
+    <p class="muted">The summary couldn't be generated. The alerts below have the full details.</p>
+  {% else %}
+    <p>{{ summary.summary }}</p>
+    <p class="muted" style="font-size:.82rem">{{ summary.model }} · prompt {{ summary.prompt_version }}{% if summary.latency_ms %} · {{ summary.latency_ms }} ms{% endif %}</p>
+  {% endif %}
+</div>
+
+<h2>Alerts ({{ alerts | length }})</h2>
+<ul class="alerts card">
+  {% for alert in alerts %}
+  <li>
+    <div class="alert-top">
+      <span class="alert-name">{{ alert.alertname }}</span>
+      <span class="pill {{ alert.status }}">{{ alert.status }}</span>
+      <span class="muted times">{{ alert.starts_at.strftime("%Y-%m-%d %H:%M:%S") }}{% if alert.ends_at %} → {{ alert.ends_at.strftime("%H:%M:%S") }}{% endif %}</span>
+    </div>
+    <div class="alert-body">
+      {% if alert.annotations %}
+      <div>
+        {% for k, v in alert.annotations | dictsort %}
+        <div><span class="k">{{ k }}:</span> {{ v }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="kv">
+        {% for k, v in alert.labels | dictsort %}<code>{{ k }}={{ v }}</code>{% endfor %}
+      </div>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock %}
