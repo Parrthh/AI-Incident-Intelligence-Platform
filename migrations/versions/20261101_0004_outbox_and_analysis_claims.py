@@ -46,9 +46,7 @@ def upgrade() -> None:
     op.create_index("ix_outbox_published_at", "outbox", ["published_at"])
 
     op.add_column("analyses", sa.Column("claimed_by", sa.Text(), nullable=True))
-    op.add_column(
-        "analyses", sa.Column("claimed_at", sa.DateTime(timezone=True), nullable=True)
-    )
+    op.add_column("analyses", sa.Column("claimed_at", sa.DateTime(timezone=True), nullable=True))
     # M1 could, rarely, write two rows for one incident. Keep the best one (a
     # finished summary first, then the newest) before adding the unique constraint.
     op.execute(
