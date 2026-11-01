@@ -10,8 +10,9 @@ checks; shutdown closes them. If a URL isn't configured (allowed outside
 production), that dependency is simply absent.
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import structlog
 from fastapi import FastAPI
@@ -24,6 +25,7 @@ from iip.api.routes import system
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
 from iip.queue.redis import create_redis
+from iip.worker.runner import run_worker
 
 logger = structlog.get_logger(__name__)
 
@@ -66,9 +68,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             readiness.register("redis", check_redis)
         app.state.redis = redis
 
+        worker_stop = asyncio.Event()
+        worker_task: asyncio.Task[None] | None = None
+        if settings.run_worker_in_api:
+            worker_task = asyncio.create_task(run_worker(worker_stop), name="iip-worker")
+            logger.info("worker_running_in_api_process")
+        app.state.worker_task = worker_task
+
         try:
             yield
         finally:
+            if worker_task is not None:
+                worker_stop.set()
+                # Give in-flight work a bounded time to finish, then cancel.
+                try:
+                    await asyncio.wait_for(worker_task, timeout=15)
+                except TimeoutError:
+                    worker_task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await worker_task
             if redis is not None:
                 await redis.aclose()
             if engine is not None:

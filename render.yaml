@@ -1,0 +1,51 @@
+# Render Blueprint for the hosted demo. See docs/adr/0004-free-tier-hosted-demo.md.
+#
+# First-time setup (Parth, once): Render dashboard -> New -> Blueprint -> this repo.
+# Render then asks for every `sync: false` value below. After that, every change
+# to this file goes through a PR like any other code.
+services:
+  - type: web
+    name: iip-demo
+    runtime: docker
+    plan: free
+    region: virginia  # same region as Neon and Upstash (AWS us-east-1)
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Free instances have no pre-deploy step, so migrations run at startup. They
+    # take a Postgres advisory lock, so overlapping instances during a deploy are safe.
+    dockerCommand: sh -c "iip migrate && exec iip api"
+    # Render restarts the service when this fails, so it must be the liveness
+    # endpoint. Pointing it at /readyz would turn a database blip into a restart
+    # loop. Readiness is checked by the post-deploy smoke test instead.
+    healthCheckPath: /healthz
+    # Deploy only commits whose GitHub checks passed.
+    autoDeployTrigger: checksPass
+    # No buildFilter on purpose: every main commit deploys, so the deploy check can
+    # always expect the latest SHA to go live.
+    envVars:
+      - key: IIP_ENV
+        value: production
+      - key: IIP_LOG_JSON
+        value: "true"
+      - key: IIP_LOG_LEVEL
+        value: INFO
+      # Render's proxy sits in front of the app and sets X-Forwarded-*.
+      - key: IIP_FORWARDED_ALLOW_IPS
+        value: "*"
+      # No background workers on the free plan: run the worker loop in-process.
+      - key: IIP_RUN_WORKER_IN_API
+        value: "true"
+      # Free databases allow few connections; keep the pool small.
+      - key: IIP_DB_POOL_SIZE
+        value: "3"
+      # Secrets, entered in the Render dashboard (never committed).
+      - key: DATABASE_URL  # Neon pooled connection string
+        sync: false
+      - key: REDIS_URL  # Upstash rediss:// URL
+        sync: false
+      - key: GEMINI_API_KEY  # Google AI Studio key (used from M1)
+        sync: false
+      # Bearer token Alertmanager will use for the webhook (from M1). Render
+      # generates a random value; copy it from the dashboard when needed.
+      - key: IIP_WEBHOOK_TOKEN
+        generateValue: true

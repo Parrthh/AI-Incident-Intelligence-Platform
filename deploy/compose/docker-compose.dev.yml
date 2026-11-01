@@ -1,4 +1,4 @@
-# Local development stack: API + Postgres (with pgvector) + Redis.
+# Local development stack: API + worker + Postgres (with pgvector) + Redis.
 #   make dev        start everything (rebuilds the API image)
 #   make dev-down   stop (data volumes are kept)
 name: iip-dev
@@ -55,6 +55,25 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    stop_grace_period: 25s
+
+  worker:
+    build:
+      context: ../..
+      args:
+        GIT_SHA: dev
+    environment:
+      IIP_ENV: development
+      IIP_LOG_JSON: "false"
+      IIP_DATABASE_URL: postgresql://iip:iip-dev-only@postgres:5432/iip
+      IIP_REDIS_URL: redis://redis:6379/0
+    command: ["iip", "worker"]
+    depends_on:
+      api:  # the API applies migrations before the worker starts using the schema
+        condition: service_started
+    # The image healthcheck probes the HTTP port, which the worker doesn't serve.
+    healthcheck:
+      disable: true
     stop_grace_period: 25s
 
 volumes:

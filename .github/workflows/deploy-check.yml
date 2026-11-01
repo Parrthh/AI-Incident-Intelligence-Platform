@@ -1,0 +1,61 @@
+name: Deploy check
+
+# After CI passes on main, Render deploys the commit (autoDeployTrigger: checksPass).
+# This job waits until the demo reports that exact commit on /version, then
+# checks /readyz. If the deploy never shows up, or comes up unhealthy, it fails.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-check
+  cancel-in-progress: true
+
+env:
+  # Set to the Render URL once the Blueprint is connected (M0 step 12).
+  DEMO_URL: ""
+
+jobs:
+  check:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - name: Skip until the demo exists
+        if: ${{ env.DEMO_URL == '' }}
+        run: echo "::notice::DEMO_URL not set yet; skipping deploy check."
+
+      - name: Wait for the new commit to be live
+        if: ${{ env.DEMO_URL != '' }}
+        run: |
+          # Render builds after checks pass, and a sleeping free instance takes
+          # about a minute to wake, so allow up to 20 minutes.
+          deadline=$(( $(date +%s) + 1200 ))
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            live=$(curl -fsS --max-time 60 "$DEMO_URL/version" | python3 -c 'import sys,json; print(json.load(sys.stdin)["git_sha"])' 2>/dev/null || true)
+            echo "live=${live:-unreachable} expected=$EXPECTED_SHA"
+            if [ "$live" = "$EXPECTED_SHA" ]; then exit 0; fi
+            sleep 30
+          done
+          echo "::error::$EXPECTED_SHA did not go live within 20 minutes"
+          exit 1
+
+      - name: Check readiness
+        if: ${{ env.DEMO_URL != '' }}
+        run: |
+          curl -fsS --max-time 30 "$DEMO_URL/healthz"
+          echo
+          curl -sS --max-time 30 -o readyz.json -w "%{http_code}" "$DEMO_URL/readyz" > code.txt
+          cat readyz.json; echo
+          if [ "$(cat code.txt)" != "200" ]; then
+            echo "::error::/readyz returned $(cat code.txt)"
+            exit 1
+          fi
