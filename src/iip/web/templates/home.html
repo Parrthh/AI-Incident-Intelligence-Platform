@@ -222,9 +222,9 @@
       <ol class="steps">
         <li><h3>Alert fires</h3><p>A Prometheus rule trips and Alertmanager posts the alert here.</p></li>
         <li><h3>Stored once</h3><p>Retries and duplicates leave exactly one record, even when ten copies arrive at the same moment.</p></li>
-        <li><h3>Incident opens</h3><p>A new alert opens an incident. When the alert resolves, so does the incident.</p></li>
+        <li><h3>Grouped</h3><p>Alerts on related services (checkout calls payment) join one incident, and the timeline says why.</p></li>
         <li><h3>Summary written</h3><p>A background worker strips out secrets, then an AI model (Gemini) writes two or three sentences from the alert data alone.</p></li>
-        <li><h3>Shown on call</h3><p>The incident list updates with the summary and the model and prompt that wrote it.</p></li>
+        <li><h3>Evidence gathered</h3><p>Once alerts settle, it gathers the alerts, recent deploys and, where connected, error logs, failing traces and metrics, each with a short ID.</p></li>
       </ol>
     </section>
 

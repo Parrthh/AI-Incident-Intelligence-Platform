@@ -39,12 +39,12 @@ MILESTONES: list[tuple[str, str, str]] = [
     ),
     (
         "Grouping and evidence",
-        "active",
+        "done",
         "Group related alerts into one incident and gather logs, traces and recent deploys.",
     ),
     (
         "Root cause with citations",
-        "planned",
+        "active",
         "Suggest likely causes, each pointing at its evidence, and measure accuracy on test cases.",
     ),
     (
