@@ -35,7 +35,9 @@ COPY --from=builder --chown=iip:iip /app/.venv /app/.venv
 COPY --chown=iip:iip alembic.ini ./
 COPY --chown=iip:iip migrations ./migrations
 
-ARG GIT_SHA=unknown
+# Empty unless the build passes it (CI and GHCR do). On Render the app falls back
+# to RENDER_GIT_COMMIT at runtime.
+ARG GIT_SHA=""
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

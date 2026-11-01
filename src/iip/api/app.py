@@ -39,7 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         logger.info(
             "api_starting",
             version=__version__,
-            git_sha=settings.git_sha,
+            git_sha=settings.commit_sha,
             env=settings.env.value,
         )
 

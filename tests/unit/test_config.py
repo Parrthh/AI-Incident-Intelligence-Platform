@@ -30,7 +30,7 @@ def test_defaults() -> None:
 
     assert settings.env is Environment.DEVELOPMENT
     assert settings.port == 8000
-    assert settings.git_sha == "unknown"
+    assert settings.commit_sha == "unknown"
     assert settings.is_production is False
 
 
@@ -54,14 +54,14 @@ def test_accepts_platform_port_and_commit_names(monkeypatch: pytest.MonkeyPatch)
     settings = make_settings()
 
     assert settings.port == 10000
-    assert settings.git_sha == "abc123"
+    assert settings.commit_sha == "abc123"
 
 
 def test_prefixed_name_wins_over_platform_name(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("IIP_GIT_SHA", "from-ci")
     monkeypatch.setenv("RENDER_GIT_COMMIT", "from-render")
 
-    assert make_settings().git_sha == "from-ci"
+    assert make_settings().commit_sha == "from-ci"
 
 
 @pytest.mark.parametrize(
@@ -125,3 +125,42 @@ def test_development_runs_without_database_or_redis() -> None:
 
     assert settings.database_url is None
     assert settings.redis_url is None
+
+
+def test_empty_baked_in_sha_falls_back_to_render_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The Docker image sets IIP_GIT_SHA="" when built without a GIT_SHA arg, as on
+    # Render. That must not hide the commit Render provides at runtime.
+    monkeypatch.setenv("IIP_GIT_SHA", "")
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "7d87db6")
+
+    assert make_settings().commit_sha == "7d87db6"
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        # Upstash's REST endpoint, a common copy-paste mistake.
+        ("REDIS_URL", "https://example-12345.upstash.io"),
+        # The redis-cli command instead of the URL.
+        ("REDIS_URL", "redis-cli --tls -u redis://default:topsecret@example.upstash.io:6379"),
+        ("DATABASE_URL", "mysql://u:topsecret@db/iip"),
+    ],
+)
+def test_wrong_connection_string_fails_without_leaking_it(
+    monkeypatch: pytest.MonkeyPatch, name: str, value: str
+) -> None:
+    monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValidationError) as exc_info:
+        make_settings()
+
+    message = str(exc_info.value)
+    assert "must start with" in message
+    assert "topsecret" not in message
+    assert "upstash.io" not in message
+
+
+def test_accepts_tls_redis_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REDIS_URL", "rediss://default:tok@example.upstash.io:6379")
+
+    assert make_settings().redis_url is not None
