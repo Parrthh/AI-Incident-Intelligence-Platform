@@ -43,6 +43,27 @@ make help         # all commands
 | `GET /healthz` | Liveness: the process is running |
 | `GET /readyz` | Readiness: Postgres and Redis are reachable (503 if not) |
 | `GET /version` | Package version and git commit of the running build |
+| `GET /metrics` | Prometheus metrics: request latency, jobs, queue backlog, outbox lag, LLM calls (Bearer token if `IIP_METRICS_TOKEN` is set) |
+
+### Operating the job queue
+
+Summaries are written by background jobs on a Redis stream ([ADR-0002](docs/adr/0002-redis-streams-queue.md), [ADR-0008](docs/adr/0008-transactional-outbox.md)). Jobs that fail for good land in a dead-letter stream.
+
+```bash
+iip queue stats              # stream length, pending jobs, dead letters, workers
+iip dlq list                 # newest dead letters with their errors (JSON lines)
+iip dlq replay <id> [<id>]   # put dead letters back on the queue (or --all)
+iip dlq purge --yes          # delete every dead letter
+iip queue prune-consumers    # forget worker names idle for an hour
+```
+
+For dashboards, add Prometheus and Grafana to the dev stack:
+
+```bash
+docker compose -f deploy/compose/docker-compose.dev.yml \
+  -f deploy/compose/docker-compose.observability.yml up -d
+# Grafana at http://localhost:3000, dashboard "Incident pipeline"
+```
 
 ## Project plan
 

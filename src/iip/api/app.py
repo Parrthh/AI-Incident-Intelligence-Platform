@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from iip import __version__
 from iip.api.health import ReadinessChecks
 from iip.api.middleware import RequestContextMiddleware
-from iip.api.routes import incidents, system, webhooks
+from iip.api.routes import incidents, metrics, system, webhooks
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
 from iip.llm.factory import build_provider
@@ -144,6 +144,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.add_middleware(RequestContextMiddleware)
     app.include_router(system.router)
+    app.include_router(metrics.router)
     app.include_router(home.router)
     app.include_router(webhooks.router)
     app.include_router(incidents.router)

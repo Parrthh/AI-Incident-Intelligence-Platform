@@ -85,6 +85,7 @@ async def start_worker(
         "IIP_QUEUE_RETRY_BASE_SECONDS": "1",
         "IIP_LOG_JSON": "false",
         "IIP_LOG_LEVEL": "WARNING",
+        "IIP_WORKER_METRICS_PORT": "0",
     }
     return await asyncio.create_subprocess_exec(
         sys.executable, "-m", "iip", "worker", cwd=REPO_ROOT, env=env

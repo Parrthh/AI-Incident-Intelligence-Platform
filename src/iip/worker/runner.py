@@ -19,6 +19,7 @@ import socket
 from dataclasses import dataclass
 
 import structlog
+from prometheus_client import start_http_server
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -109,6 +110,12 @@ async def run_worker_until_signalled(settings: Settings | None = None) -> None:
         logger.warning("worker_missing_dependencies", database=bool(settings.database_url))
         await run_worker(stop)
         return
+
+    if settings.worker_metrics_port:
+        # Counters for jobs and LLM calls live in this process, so it serves its
+        # own /metrics. Backlog gauges come from the API's /metrics.
+        start_http_server(settings.worker_metrics_port)
+        logger.info("worker_metrics_serving", port=settings.worker_metrics_port)
 
     engine = create_engine(
         settings.database_url.get_secret_value(), pool_size=settings.db_pool_size

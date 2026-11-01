@@ -19,6 +19,8 @@ import structlog
 from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from iip.observability.metrics import HTTP_REQUEST_DURATION
+
 REQUEST_ID_HEADER = "x-request-id"
 
 # Accept caller-supplied IDs only if they look like IDs. Anything else (very long
@@ -28,6 +30,7 @@ _VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
 # Health checks are polled constantly by the platform; logging each one is noise.
 _QUIET_PATHS = frozenset({"/healthz", "/readyz"})
+_KNOWN_METHODS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
 
 logger = structlog.get_logger("iip.access")
 
@@ -69,7 +72,13 @@ class RequestContextMiddleware:
             try:
                 await self.app(scope, receive, send_wrapper)
             finally:
-                duration_ms = round((time.perf_counter() - start) * 1000, 2)
+                elapsed = time.perf_counter() - start
+                duration_ms = round(elapsed * 1000, 2)
+                # Label by route template ("/incidents/{incident_id}"), never the raw
+                # path, so IDs and junk URLs can't create unbounded label values.
+                route = getattr(scope.get("route"), "path", None) or "unmatched"
+                method_label = method if method in _KNOWN_METHODS else "OTHER"
+                HTTP_REQUEST_DURATION.labels(method_label, route, str(status_code)).observe(elapsed)
                 if path not in _QUIET_PATHS or status_code >= 400:
                     logger.info(
                         "request",

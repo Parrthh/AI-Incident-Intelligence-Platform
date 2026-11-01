@@ -12,6 +12,7 @@ from typing import cast
 
 import pytest
 from fastapi.testclient import TestClient
+from prometheus_client import REGISTRY
 from pydantic import SecretStr
 from redis.asyncio import Redis
 from sqlalchemy import func, select
@@ -329,3 +330,26 @@ async def test_three_failures_then_success_gives_one_summary_after_four_attempts
     assert row.attempts == 4
     assert len(llm.calls) == 4
     assert await queue.pending_count() == 0
+
+
+async def test_metrics_report_jobs_and_backlog(
+    migrated_database_url: str, redis_url: str, db: AsyncEngine, redis: Redis, stream: str
+) -> None:
+    def jobs_done() -> float:
+        return (
+            REGISTRY.get_sample_value("iip_jobs_total", {"type": "summarize", "outcome": "done"})
+            or 0.0
+        )
+
+    before = jobs_done()
+    settings = make_settings(migrated_database_url, redis_url, stream, run_worker_in_api=True)
+    with TestClient(create_app(settings)) as client:
+        client.post(URL, json=load_alertmanager("high_error_rate_firing"), headers=AUTH)
+        await wait_for(lambda: done_summaries(db))
+        text = client.get("/metrics").text
+
+    assert jobs_done() == before + 1
+    assert "iip_queue_pending 0.0" in text
+    assert "iip_queue_dead_letters 0.0" in text
+    assert "iip_outbox_unpublished 0.0" in text
+    assert "iip_outbox_lag_seconds 0.0" in text

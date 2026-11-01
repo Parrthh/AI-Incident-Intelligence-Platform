@@ -34,6 +34,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from iip.db.models import OutboxMessage
+from iip.observability.metrics import OUTBOX_PUBLISH_ERRORS, OUTBOX_PUBLISHED
 from iip.queue.streams import publish
 
 logger = structlog.get_logger(__name__)
@@ -100,8 +101,10 @@ class OutboxRelay:
                 row.attempts += 1
                 published += 1
         if published:
+            OUTBOX_PUBLISHED.inc(published)
             logger.info("outbox_published", count=published)
         if failure is not None:
+            OUTBOX_PUBLISH_ERRORS.inc()
             raise failure
         return published
 
