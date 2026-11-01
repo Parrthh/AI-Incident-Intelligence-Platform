@@ -39,6 +39,11 @@ services:
       # Free databases allow few connections; keep the pool small.
       - key: IIP_DB_POOL_SIZE
         value: "3"
+      # Incident summaries via Gemini's free tier (ADR-0005).
+      - key: IIP_LLM_PROVIDER
+        value: gemini
+      - key: IIP_LLM_MODEL
+        value: gemini-2.5-flash-lite
       # Secrets, entered in the Render dashboard (never committed).
       - key: DATABASE_URL  # Neon pooled connection string
         sync: false

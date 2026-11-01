@@ -164,3 +164,16 @@ def test_accepts_tls_redis_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("REDIS_URL", "rediss://default:tok@example.upstash.io:6379")
 
     assert make_settings().redis_url is not None
+
+
+def test_gemini_provider_requires_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("IIP_LLM_PROVIDER", "gemini")
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("IIP_GEMINI_API_KEY", raising=False)
+
+    with pytest.raises(ValidationError, match="GEMINI_API_KEY"):
+        make_settings()
+
+
+def test_llm_is_off_by_default() -> None:
+    assert make_settings().llm_provider == "none"
