@@ -1,5 +1,6 @@
 """Deterministic provider for tests and for running without an API key."""
 
+import asyncio
 from collections.abc import Sequence
 
 from iip.llm.base import LLMError, LLMResponse
@@ -14,7 +15,9 @@ class FakeProvider:
         model: str = "fake-model",
         reply: str = "Fake summary of the incident.",
         failures: Sequence[LLMError] = (),
+        delay_seconds: float = 0.0,
     ) -> None:
+        self.delay_seconds = delay_seconds
         self.model = model
         self.reply = reply
         self._failures = list(failures)  # raised in order before succeeding
@@ -29,6 +32,8 @@ class FakeProvider:
         temperature: float = 0.2,
     ) -> LLMResponse:
         self.calls.append(prompt)
+        if self.delay_seconds:
+            await asyncio.sleep(self.delay_seconds)
         if self._failures:
             raise self._failures.pop(0)
         return LLMResponse(

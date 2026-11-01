@@ -4,11 +4,14 @@ Commands:
     iip api      run the HTTP API (``--migrate`` applies migrations first)
     iip worker   run the background worker
     iip migrate  apply database migrations (safe to run from several instances at once)
+    iip queue    show job queue health, or prune old worker names
+    iip dlq      list, replay or purge dead-lettered jobs
     iip version  print the installed version
 """
 
 import argparse
 import os
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -64,6 +67,76 @@ def _run_migrate() -> int:
     return 0
 
 
+def _run_queue_command(args: argparse.Namespace) -> int:
+    """``iip queue ...`` and ``iip dlq ...``: short-lived admin commands against Redis."""
+    import asyncio
+    import json
+    from datetime import UTC, datetime
+
+    from iip.queue import admin
+    from iip.queue.redis import create_redis
+
+    settings = get_settings()
+    configure_logging(level=settings.log_level, json=settings.log_json)
+    if settings.redis_url is None:
+        print("REDIS_URL is not set", file=sys.stderr)
+        return 2
+    stream = settings.jobs_stream
+    url = settings.redis_url.get_secret_value()
+
+    async def run() -> int:
+        redis = create_redis(url)
+        try:
+            if args.command == "queue" and args.action == "stats":
+                stats = await admin.queue_stats(redis, stream)
+                print(f"stream        {stream}")
+                print(f"length        {stats.stream_length}")
+                print(f"pending       {stats.pending}")
+                print(f"dead letters  {stats.dead_letters}")
+                print(f"consumers     {len(stats.consumers)}")
+                for c in stats.consumers:
+                    print(f"  {c['name']}  pending={c['pending']}  idle={int(c['idle']) // 1000}s")
+            elif args.command == "queue" and args.action == "prune-consumers":
+                removed = await admin.prune_consumers(redis, stream)
+                print(f"removed {len(removed)} idle consumers")
+            elif args.action == "list":
+                for d in await admin.dlq_list(redis, stream, limit=args.limit):
+                    when = datetime.fromtimestamp(float(d.dead_lettered_at or 0), UTC)
+                    print(
+                        json.dumps(
+                            {
+                                "id": d.id,
+                                "type": d.type,
+                                "payload": d.payload,
+                                "deliveries": d.deliveries,
+                                "error": d.error,
+                                "dead_lettered_at": when.isoformat(timespec="seconds"),
+                            }
+                        )
+                    )
+            elif args.action == "replay":
+                ids = None if args.all else list(args.ids)
+                if ids is not None and not ids:
+                    print("give dead letter IDs or --all", file=sys.stderr)
+                    return 2
+                try:
+                    count = await admin.dlq_replay(redis, stream, ids)
+                except KeyError as exc:
+                    print(f"no dead letter with id {exc.args[0]}", file=sys.stderr)
+                    return 1
+                print(f"replayed {count}")
+            elif args.action == "purge":
+                if not args.yes:
+                    print("purge deletes every dead letter; add --yes to confirm", file=sys.stderr)
+                    return 2
+                print(f"purged {await admin.dlq_purge(redis, stream)}")
+            return 0
+        finally:
+            await redis.aclose()
+
+    return asyncio.run(run())
+
+
 def _apply_migrations() -> None:
     import structlog
     from alembic import command
@@ -92,6 +165,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     sub.add_parser("migrate", help="apply database migrations")
     sub.add_parser("version", help="print the installed version")
 
+    queue = sub.add_parser("queue", help="job queue health")
+    queue_sub = queue.add_subparsers(dest="action", required=True)
+    queue_sub.add_parser("stats", help="stream length, pending jobs, dead letters, workers")
+    queue_sub.add_parser("prune-consumers", help="forget worker names idle for an hour")
+
+    dlq = sub.add_parser("dlq", help="dead-lettered jobs")
+    dlq_sub = dlq.add_subparsers(dest="action", required=True)
+    dlq_list = dlq_sub.add_parser("list", help="newest dead letters, one JSON object per line")
+    dlq_list.add_argument("--limit", type=int, default=20)
+    dlq_replay = dlq_sub.add_parser("replay", help="put dead letters back on the queue")
+    dlq_replay.add_argument("ids", nargs="*", help="dead letter IDs from `iip dlq list`")
+    dlq_replay.add_argument("--all", action="store_true", help="replay every dead letter")
+    dlq_purge = dlq_sub.add_parser("purge", help="delete every dead letter")
+    dlq_purge.add_argument("--yes", action="store_true", help="confirm")
+
     args = parser.parse_args(argv)
     if args.command == "api":
         return _run_api(migrate=bool(args.migrate))
@@ -99,6 +187,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_worker()
     if args.command == "migrate":
         return _run_migrate()
+    if args.command in {"queue", "dlq"}:
+        return _run_queue_command(args)
     if args.command == "version":
         print(__version__)
         return 0

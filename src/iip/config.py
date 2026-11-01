@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     llm_model: str = "gemini-3.5-flash-lite"
     llm_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
     llm_max_retries: int = Field(default=2, ge=0, le=5)
+    # Only for the "fake" provider: simulated call time, so crash and load tests
+    # have work in flight to interrupt.
+    llm_fake_delay_ms: int = Field(default=0, ge=0, le=60_000)
     gemini_api_key: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("IIP_GEMINI_API_KEY", "GEMINI_API_KEY")
     )
@@ -99,6 +102,9 @@ class Settings(BaseSettings):
 
     # Redis stream the background jobs go through (ADR-0002). Tests use their own.
     jobs_stream: str = Field(default="iip.jobs", min_length=1, max_length=200)
+    # First retry wait for a failed or abandoned job; doubles per attempt, capped
+    # at 10 minutes. Must exceed the slowest job run (ADR-0002). Tests shrink it.
+    queue_retry_base_seconds: float = Field(default=120.0, gt=0, le=600)
     # Fallback sweep for outbox rows the immediate publish missed (ADR-0008).
     # Longer than Neon's 5-minute auto-suspend on purpose, so an idle demo lets
     # the database sleep.

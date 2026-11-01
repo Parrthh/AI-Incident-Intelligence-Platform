@@ -301,3 +301,31 @@ async def test_job_for_deleted_incident_is_acknowledged(
     handlers = build_handlers(sessionmaker_for(db), FakeProvider(), llm_max_retries=0)
     assert await handle_message(queue, handlers, message) == "done"
     assert await analyses(db) == []
+
+
+async def test_three_failures_then_success_gives_one_summary_after_four_attempts(
+    db: AsyncEngine, redis: Redis, stream: str
+) -> None:
+    incident_id = await create_incident(db)
+    await publish(redis, stream, JOB_SUMMARIZE, {"incident_id": str(incident_id)})
+    queue = make_queue(redis, stream, "w")
+    outage = [LLMError("503 from provider", retryable=True)] * 3
+    llm = FakeProvider(failures=outage)
+    handlers = build_handlers(sessionmaker_for(db), llm, llm_max_retries=0)
+
+    [message] = await queue.read()
+    outcomes = [await handle_message(queue, handlers, message)]
+
+    async def due() -> list[Message]:
+        return await queue.claim_due()
+
+    while outcomes[-1] == "retry":
+        [retry] = await wait_for(due)
+        outcomes.append(await handle_message(queue, handlers, retry))
+
+    assert outcomes == ["retry", "retry", "retry", "done"]
+    [row] = await analyses(db)
+    assert row.status == "done"
+    assert row.attempts == 4
+    assert len(llm.calls) == 4
+    assert await queue.pending_count() == 0
