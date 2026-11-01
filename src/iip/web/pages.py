@@ -16,12 +16,19 @@ from iip import __version__
 from iip.api.deps import SessionDep
 from iip.incidents.queries import InvalidCursorError, get_incident_detail, list_incidents
 
-templates = Jinja2Templates(
-    env=Environment(
-        loader=PackageLoader("iip.web", "templates"),
-        autoescape=select_autoescape(["html"]),
-    )
+
+def prompt_version(prompt_id: str) -> str:
+    """Show a stored prompt ID like ``summary_v0`` as the plain number ``0``."""
+    _, _, version = prompt_id.rpartition("_v")
+    return version or prompt_id
+
+
+_env = Environment(
+    loader=PackageLoader("iip.web", "templates"),
+    autoescape=select_autoescape(["html"]),
 )
+_env.filters["prompt_version"] = prompt_version  # pyright: ignore[reportUnknownMemberType]
+templates = Jinja2Templates(env=_env)
 
 router = APIRouter(include_in_schema=False)
 
