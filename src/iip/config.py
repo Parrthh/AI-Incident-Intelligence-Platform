@@ -12,7 +12,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import AliasChoices, Field, SecretStr, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +33,9 @@ class Settings(BaseSettings):
         extra="ignore",
         frozen=True,
         validate_by_name=True,  # allow Settings(git_sha=...) in tests despite aliases
+        # Validation errors normally echo the bad input. For connection strings
+        # that would print passwords into the logs, so never include inputs.
+        hide_input_in_errors=True,
     )
 
     env: Environment = Environment.DEVELOPMENT
@@ -54,12 +57,13 @@ class Settings(BaseSettings):
     # JSON logs in production; human-readable console logs are easier locally.
     log_json: bool = True
 
-    # Commit SHA of the running build. Render sets RENDER_GIT_COMMIT; CI and Docker
-    # builds set IIP_GIT_SHA. Used by /version so deploys can be verified.
-    git_sha: str = Field(
-        default="unknown",
-        validation_alias=AliasChoices("IIP_GIT_SHA", "RENDER_GIT_COMMIT"),
-    )
+    # Commit SHA of the running build, reported by /version so a deploy can be
+    # verified. Docker builds bake in IIP_GIT_SHA when a GIT_SHA build arg is given
+    # (CI, GHCR images); Render sets RENDER_GIT_COMMIT at runtime. Kept as two
+    # fields so an empty IIP_GIT_SHA from a build without the arg doesn't hide
+    # Render's value. Read the result through `commit_sha`.
+    git_sha: str = Field(default="", validation_alias=AliasChoices("IIP_GIT_SHA", "git_sha"))
+    render_git_commit: str = Field(default="", validation_alias="RENDER_GIT_COMMIT")
 
     # Connection strings are SecretStr so they never show up in reprs, logs or
     # error messages by accident. Call .get_secret_value() only where connecting.
@@ -80,6 +84,31 @@ class Settings(BaseSettings):
     # Connection pool size per process. Free-tier databases allow few
     # connections, so keep this small.
     db_pool_size: int = Field(default=5, ge=1, le=50)
+
+    @field_validator("database_url")
+    @classmethod
+    def _check_database_scheme(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None:
+            scheme = value.get_secret_value().strip().split("://", 1)[0].lower()
+            if scheme not in {"postgres", "postgresql", "postgresql+asyncpg"}:
+                raise ValueError("DATABASE_URL must start with postgresql:// (or postgres://)")
+        return value
+
+    @field_validator("redis_url")
+    @classmethod
+    def _check_redis_scheme(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None:
+            scheme = value.get_secret_value().strip().split("://", 1)[0].lower()
+            if scheme not in {"redis", "rediss", "unix"}:
+                raise ValueError(
+                    "REDIS_URL must start with redis:// or rediss:// (for TLS, e.g. Upstash). "
+                    "An https:// URL is a REST endpoint, not a Redis connection string."
+                )
+        return value
+
+    @property
+    def commit_sha(self) -> str:
+        return self.git_sha.strip() or self.render_git_commit.strip() or "unknown"
 
     @property
     def is_production(self) -> bool:

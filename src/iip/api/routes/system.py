@@ -56,4 +56,4 @@ async def readyz(request: Request, response: Response) -> ReadinessResponse:
 @router.get("/version", response_model=VersionResponse)
 async def version(request: Request) -> VersionResponse:
     settings: Settings = request.app.state.settings
-    return VersionResponse(version=__version__, git_sha=settings.git_sha)
+    return VersionResponse(version=__version__, git_sha=settings.commit_sha)

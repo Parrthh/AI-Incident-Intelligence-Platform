@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Set to the Render URL once the Blueprint is connected (M0 step 12).
-  DEMO_URL: ""
+  # The hosted demo (render.yaml service iip-demo).
+  DEMO_URL: "https://iip-demo.onrender.com"
 
 jobs:
   check:
