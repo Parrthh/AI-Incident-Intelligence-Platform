@@ -8,6 +8,7 @@ from iip.api.app import create_app
 from iip.config import Environment, Settings
 from iip.ingest.alertmanager import AlertmanagerPayload
 from tests.fixtures.loader import load_alertmanager
+from tests.integration.helpers import run_summary_jobs
 
 pytestmark = pytest.mark.integration
 
@@ -37,6 +38,7 @@ def test_home_shows_latest_live_incident_and_real_counts(client: TestClient) -> 
         headers=AUTH,
     )
     incident_id = response.json()["new_incident_ids"][0]
+    run_summary_jobs(client)
 
     html = client.get("/").text
     assert "Latest incident on this deployment" in html
