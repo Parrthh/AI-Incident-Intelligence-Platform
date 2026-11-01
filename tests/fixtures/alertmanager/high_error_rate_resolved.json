@@ -1,0 +1,37 @@
+{
+  "version": "4",
+  "groupKey": "{}:{alertname=\"HighErrorRate\"}",
+  "truncatedAlerts": 0,
+  "status": "resolved",
+  "receiver": "iip",
+  "groupLabels": {
+    "alertname": "HighErrorRate"
+  },
+  "commonLabels": {
+    "alertname": "HighErrorRate",
+    "service": "checkout",
+    "severity": "critical"
+  },
+  "commonAnnotations": {
+    "summary": "checkout error rate above 5% for 2 minutes"
+  },
+  "externalURL": "http://alertmanager:9093",
+  "alerts": [
+    {
+      "status": "resolved",
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "checkout",
+        "severity": "critical"
+      },
+      "annotations": {
+        "summary": "checkout error rate above 5% for 2 minutes",
+        "description": "12.4% of checkout requests are failing."
+      },
+      "startsAt": "2026-11-01T04:10:00.000Z",
+      "endsAt": "2026-11-01T04:25:00.000Z",
+      "generatorURL": "http://prometheus:9090/graph?g0.expr=error_ratio",
+      "fingerprint": "a1b2c3d4e5f60718"
+    }
+  ]
+}

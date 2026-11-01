@@ -1,0 +1,49 @@
+{
+  "version": "4",
+  "groupKey": "{}:{severity=\"warning\"}",
+  "truncatedAlerts": 0,
+  "status": "firing",
+  "receiver": "iip",
+  "groupLabels": {
+    "alertname": "HighErrorRate"
+  },
+  "commonLabels": {
+    "alertname": "HighErrorRate",
+    "service": "checkout",
+    "severity": "critical"
+  },
+  "commonAnnotations": {
+    "summary": "checkout error rate above 5% for 2 minutes"
+  },
+  "externalURL": "http://alertmanager:9093",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "HighLatencyP95",
+        "service": "cart",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "cart p95 latency above 500ms"
+      },
+      "startsAt": "2026-11-01T05:00:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "",
+      "fingerprint": "bbbb000011112222"
+    },
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "ServiceDown",
+        "job": "recommendation",
+        "severity": "critical"
+      },
+      "annotations": {},
+      "startsAt": "2026-11-01T05:01:30+00:00",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "",
+      "fingerprint": "cccc333344445555"
+    }
+  ]
+}

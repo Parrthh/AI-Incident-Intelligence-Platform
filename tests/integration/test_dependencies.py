@@ -16,6 +16,9 @@ pytestmark = pytest.mark.integration
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+# Latest migration. Update when adding one (test_schema.py catches model drift).
+HEAD_REVISION = "0002"
+
 
 def make_settings(**overrides: object) -> Settings:
     return Settings(env=Environment.TEST, _env_file=None, **overrides)  # pyright: ignore[reportCallIssue, reportArgumentType]
@@ -105,7 +108,7 @@ async def test_migrate_enables_pgvector_and_is_idempotent(fresh_database_url: st
     code, output = await _migrate(fresh_database_url)
     assert code == 0, output
 
-    assert await _schema_state(fresh_database_url) == ("vector", "0001")
+    assert await _schema_state(fresh_database_url) == ("vector", HEAD_REVISION)
 
 
 async def test_concurrent_migrations_do_not_conflict(fresh_database_url: str) -> None:
@@ -115,4 +118,4 @@ async def test_concurrent_migrations_do_not_conflict(fresh_database_url: str) ->
 
     for code, output in results:
         assert code == 0, output
-    assert await _schema_state(fresh_database_url) == ("vector", "0001")
+    assert await _schema_state(fresh_database_url) == ("vector", HEAD_REVISION)
