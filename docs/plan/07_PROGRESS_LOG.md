@@ -5,8 +5,8 @@ Claude updates this at the end of every work session, in the same PR as the work
 ## Current status
 
 - **Active milestone:** M0 Foundations
-- **Current step:** M0 acceptance check (deploy check verifying `/readyz` on the live demo)
-- **Next up:** M1 walking skeleton (Alertmanager webhook, first LLM summary, UI v0)
+- **Current step:** M1 acceptance: the live demo needs real incidents (chaos run forwarding, waits on the `IIP_DEMO_WEBHOOK_TOKEN` secret)
+- **Next up:** M2 async pipeline (Redis Streams queue, outbox, retries, DLQ)
 - **Blockers:** none
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
 - **Live URL:** https://iip-demo.onrender.com (free tier: sleeps after 15 idle minutes, about 1 minute to wake)
@@ -30,8 +30,8 @@ Claude updates this at the end of every work session, in the same PR as the work
 | Milestone | Status | Started | Finished | Notes |
 |---|---|---|---|---|
 | Setup (owner tasks) | done | 2026-10-31 | 2026-11-01 | Render connected; Render connector added to the Claude session |
-| M0 Foundations | in progress | 2026-10-31 | | |
-| M1 Walking skeleton | not started | | | |
+| M0 Foundations | done | 2026-10-31 | 2026-11-01 | |
+| M1 Walking skeleton | in progress | 2026-11-01 | | PRs #11 to #15; chaos run passes end to end |
 | M2 Async pipeline | not started | | | |
 | M3 Correlation and enrichment | not started | | | |
 | M4 Grounded analysis and evals | not started | | | |
@@ -71,6 +71,11 @@ Only real measurements. Every row needs method, environment and commit.
 | 2026-11-01 | CI wall time on `main` (lint, typecheck, test, build in parallel) | 58 s (slowest job: `build`; test 30 s, typecheck 10 s, lint 9 s) | GitHub check run start/end timestamps | GitHub-hosted `ubuntu-latest` | f2fc9da |
 | 2026-11-01 | Multi-arch image publish (amd64 + arm64) | 72 s | `publish` check run duration | GitHub-hosted `ubuntu-latest`, Docker layer cache warm | f2fc9da |
 | 2026-11-01 | Render deploy, start to live | 35 s (build 14 s with cache) | Render events `deploy_started` to `deploy_ended` | Render free, Virginia | f2fc9da |
+| 2026-11-01 | Gemini summary latency (smoke test, fixture incident) | 905 ms, 298 input / 110 output tokens | `LLM smoke test` workflow annotation | GitHub runner to Gemini API, gemini-3.5-flash-lite | 07acc6a |
+| 2026-11-01 | Chaos `payment_failure`: flag on to incident opened | 210 s | `chaos/run.py` timings (polls every 15 s) | GitHub runner, OTel Demo 3.1.0, alert rules with 3m windows and `for: 1m` | 06b5e5d |
+| 2026-11-01 | Chaos `payment_failure`: incident opened to summary done | under 5 s (one poll interval) | `chaos/run.py` timings (polls every 5 s) | same, Gemini gemini-3.5-flash-lite | 06b5e5d |
+| 2026-11-01 | Chaos `payment_failure`: flag off to incident resolved | 240 s | `chaos/run.py` timings (polls every 20 s) | same | 06b5e5d |
+| 2026-11-01 | Chaos `payment_failure`: incidents opened | 1 (payment only, no false alerts) | `chaos/run.py` result | same, after excluding load-generator and raising threshold to 20% | 06b5e5d |
 | 2026-11-01 | Container start to serving (incl. migrations against Neon) | 4 s (migrations 2 s) | App log timestamps `migrations_starting` to `Uvicorn running` | Render free, Neon free (us-east-1) | f2fc9da |
 
 ### Eval history (from M4)
@@ -86,6 +91,17 @@ Only real measurements. Every row needs method, environment and commit.
 | | | | | | |
 
 ## Session log
+
+### 2026-11-01 (M1)
+Milestone / step: M1 steps 1 to 10
+Done:
+- PR #11 alert ingestion (idempotent upsert, `xmax` insert detection, resolved is final); PR #12 Gemini summaries (provider interface, redaction, versioned prompt, analyses table, live smoke test); PR #13 read API and server-rendered UI (ADR-0007); PR #14 chaos environment on GitHub Actions; PR #15 fake test credentials built at runtime (GitHub flagged a made-up key; Parth to close the alert as "used in tests").
+- First chaos run found two rule problems: the load generator alerted on its own latency, and a 5% error threshold flapped on background payment errors (around 7%). Fixed by excluding load-generator and raising the threshold to 20% with `keep_firing_for: 1m`. Second run: one incident, summarized, resolved.
+- Real Alertmanager payloads captured and committed as fixtures; home page redesigned for linking from a resume.
+Metrics captured:
+- See Measured metrics (Gemini latency, chaos timings).
+Next:
+- Live demo data once the `IIP_DEMO_WEBHOOK_TOKEN` secret exists; then M2.
 
 ### 2026-11-01 (deploy)
 Milestone / step: M0 steps 12 and 13

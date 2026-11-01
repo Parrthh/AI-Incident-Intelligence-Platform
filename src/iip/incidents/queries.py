@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import and_, any_, literal, or_, select
+from sqlalchemy import and_, any_, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -114,3 +114,56 @@ async def get_incident_detail(
     alerts = sorted(incident.alerts, key=lambda a: a.starts_at)
     summary = (await latest_summaries(session, [incident_id])).get(incident_id)
     return incident, alerts, summary
+
+
+@dataclass(frozen=True)
+class SiteStats:
+    incidents: int
+    alerts: int
+    summaries: int
+    median_summary_ms: int | None
+
+
+async def site_stats(session: AsyncSession) -> SiteStats:
+    """Counts shown on the home page. All real, straight from this database."""
+    incidents = await session.scalar(select(func.count()).select_from(Incident)) or 0
+    alerts = await session.scalar(select(func.count()).select_from(Alert)) or 0
+    summaries = (
+        await session.scalar(
+            select(func.count()).select_from(Analysis).where(Analysis.status == "done")
+        )
+        or 0
+    )
+    median = await session.scalar(
+        select(func.percentile_cont(0.5).within_group(Analysis.latency_ms)).where(
+            Analysis.status == "done", Analysis.latency_ms.is_not(None)
+        )
+    )
+    return SiteStats(
+        incidents=incidents,
+        alerts=alerts,
+        summaries=summaries,
+        median_summary_ms=round(median) if median is not None else None,
+    )
+
+
+async def latest_summarized(session: AsyncSession) -> tuple[Incident, Alert, Analysis] | None:
+    """Newest incident that has a finished summary, with its first alert."""
+    row = (
+        await session.execute(
+            select(Incident, Analysis)
+            .join(Analysis, Analysis.incident_id == Incident.id)
+            .where(Analysis.status == "done", Analysis.kind == "summary")
+            .order_by(Incident.started_at.desc())
+            .limit(1)
+        )
+    ).first()
+    if row is None:
+        return None
+    incident, analysis = row
+    alert = await session.scalar(
+        select(Alert).where(Alert.incident_id == incident.id).order_by(Alert.starts_at).limit(1)
+    )
+    if alert is None:
+        return None
+    return incident, alert, analysis
