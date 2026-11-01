@@ -4,9 +4,9 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 ## Current status
 
-- **Active milestone:** M3 Correlation and enrichment
-- **Current step:** M3 step 1 (M2 finished with PRs #18, #19, #22, #23, #24)
-- **Next up:** group related alerts (payment and checkout) into one incident
+- **Active milestone:** M4 Grounded analysis and eval harness
+- **Current step:** M4 step 1 (M3 finished with PRs #25 to #28)
+- **Next up:** root-cause hypotheses that cite evidence IDs, validated against the evidence store, and an eval set from the chaos scenarios
 - **Blockers:** none
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
 - **Live URL:** https://iip-demo.onrender.com (free tier: sleeps after 15 idle minutes, about 1 minute to wake)
@@ -33,7 +33,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 | M0 Foundations | done | 2026-10-31 | 2026-11-01 | |
 | M1 Walking skeleton | done | 2026-11-01 | 2026-11-01 | PRs #11 to #15; chaos run forwards real incidents to the live demo |
 | M2 Async pipeline | done | 2026-11-01 | 2026-11-01 | PRs #18, #19, #22, #23, #24 |
-| M3 Correlation and enrichment | not started | | | |
+| M3 Correlation and enrichment | done | 2026-11-01 | 2026-11-01 | PRs #25 to #28; see notes on acceptance item 1 |
 | M4 Grounded analysis and evals | not started | | | |
 | M5 Incident memory | not started | | | |
 | M6 Production hardening | not started | | | |
@@ -91,6 +91,10 @@ Only real measurements. Every row needs method, environment and commit.
 | 2026-11-01 | Load test: alert stored to summary done (stub LLM) | p50 0.03 to 0.07 s; p95 1.7 to 18.7 s, driven by the backlog in the overload stage | `incidents.created_at` to `analyses.completed_at` | same | same |
 | 2026-11-01 | Load test: peak CPU at overload | API 129 to 139% (of one core), worker 101 to 103%, Postgres 44 to 72% | `docker stats` sampled every 2 s | same | same |
 | 2026-11-01 | Worker crash test: SIGKILL a worker mid-run with 100 queued jobs | 100/100 summarized, 0 duplicates, 0 pending, 0 dead letters | `tests/integration/test_worker_crash.py` in CI | GitHub runner, real `iip worker` subprocesses, fake LLM 100 ms per call | 85163d9 |
+| 2026-11-01 | Noise reduction (alerts per incident) | payment_failure: 2 alerts, 1 incident (4 runs); payment_unreachable: 1 alert, 1 incident (2 runs) | `chaos/run.py` result `alerts` and `incident_count` | GitHub runner, OTel Demo 3.1.0, alert threshold 20% error ratio | 32a6858 to 9d52b72 |
+| 2026-11-01 | Evidence collection time per source (one incident) | alerts 11 to 18 ms, deploys 13 to 17 ms, metrics 18 to 38 ms, logs 25 to 55 ms, traces 59 to 207 ms | `duration_ms` on `evidence_collected` timeline events, 4 chaos runs | same, sources in the same Docker network | faf8bdd, 9d52b72 |
+| 2026-11-01 | Summary to evidence available | 25 to 65 s (debounce set to 30 s in chaos runs; default 60 s) | `chaos/run.py` `seconds_to_evidence` | same | faf8bdd, 9d52b72 |
+| 2026-11-01 | Load test with correlation (per-service locks) | 125 alerts/s held, p95 19 ms at 100/s, 69 ms at 125/s | `load.yml` | GitHub runner, 4 vCPU AMD EPYC 9V45 | 3cfd864 |
 | 2026-11-01 | Container start to serving (incl. migrations against Neon) | 4 s (migrations 2 s) | App log timestamps `migrations_starting` to `Uvicorn running` | Render free, Neon free (us-east-1) | f2fc9da |
 
 ### Eval history (from M4)
@@ -106,6 +110,15 @@ Only real measurements. Every row needs method, environment and commit.
 | | | | | | |
 
 ## Session log
+
+### 2026-11-01 (M3)
+Milestone / step: M3 all steps
+Done:
+- PR #25 correlation (same fingerprint, same service, or a connected service within 10 minutes; reasons on a new incident timeline; resolution after a 5-minute quiet period; ADR-0009). The load test caught a global lock costing throughput; per-service advisory locks fixed it.
+- PR #26 evidence store with stable IDs, `POST /v1/deploys`, debounced enrichment job with timeouts, circuit breakers and "unavailable" notes (ADR-0010). PR #27 Prometheus, Jaeger and Loki sources, log pattern grouping, Loki in the chaos environment. PR #28 `payment_unreachable` scenario, error-ratio baseline fix.
+- M3 acceptance: (1) grouping of related services works (payment and checkout become one incident in every chaos run; 3 or more services covered by integration tests only, because no demo flag fires alerts on 3+ services with the current 20% rule; a `cart_failure` scenario was tried and dropped); (2) incidents auto-resolve; (3) metrics, logs and traces evidence with stable IDs in the payment_failure run; payment_unreachable has no log evidence (the down service writes no logs); (4) with Loki stopped, the next collection records "logs unavailable" and keeps the other evidence; (5) correlation has table-driven unit tests.
+- Known weakness: metric evidence is noisy in the demo because payment traffic is low (about 0.1 requests/s). Trace groups overlap across services.
+Next: M4 (grounded analysis and the eval harness).
 
 ### 2026-11-01 (M2)
 Milestone / step: M2 PR A and PR B, M1 acceptance
