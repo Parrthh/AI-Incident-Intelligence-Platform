@@ -47,7 +47,7 @@ services:
       IIP_REDIS_URL: redis://redis:6379/0
     # Apply migrations, then serve. Safe even with several API replicas because
     # migrations take an advisory lock.
-    command: ["sh", "-c", "iip migrate && exec iip api"]
+    command: ["iip", "api", "--migrate"]
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
