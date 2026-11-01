@@ -22,6 +22,14 @@
   .alert-body .k { font-size: .8rem; color: var(--muted); }
   .times { font-size: .88rem; }
   .intro-line { margin: 6px 0 0; font-size: .92rem; }
+  .timeline { list-style: none; margin: 0; padding: 6px 18px; }
+  .timeline .ev { display: grid; grid-template-columns: 72px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); position: relative; }
+  .timeline .ev:last-child { border-bottom: 0; }
+  .ev-time { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); padding-top: 1px; }
+  .ev-title { font-weight: 600; }
+  .ev-reason { font-size: .9rem; margin-top: 2px; }
+  .ev.incident_opened .ev-title, .ev.alert_attached .ev-title { color: var(--open); }
+  .ev.incident_resolved .ev-title, .ev.alert_resolved .ev-title { color: var(--ok); }
   .section-note { margin: -4px 0 10px; font-size: .9rem; }
 </style>
 <p><a href="/incidents">← All incidents</a></p>
@@ -50,6 +58,28 @@
     <p class="muted" style="font-size:.82rem">Written by {{ summary.model }}, prompt version {{ summary.prompt_version | prompt_version }}{% if summary.latency_ms %}, in {{ summary.latency_ms }} ms{% endif %}{% if summary.completed_at %}, at {{ summary.completed_at.strftime("%H:%M:%S") }}{% endif %}, from the alerts as they first fired.{% if incident.status == "resolved" %} The incident has since been resolved.{% endif %}</p>
   {% endif %}
 </div>
+
+<h2>Timeline</h2>
+<p class="muted section-note">What happened, in order. When the platform made a decision, like adding an alert to this incident instead of opening a new one, it says why.</p>
+<ol class="timeline card">
+  {% for event in timeline %}
+  <li class="ev {{ event.kind }}">
+    <span class="ev-time">{{ event.at.strftime("%H:%M:%S") }}</span>
+    <div class="ev-body">
+      <div class="ev-title">
+        {% if event.kind == "incident_opened" %}Incident opened{% if event.payload.alertname %} by {{ event.payload.alertname }}{% if event.payload.service %} on {{ event.payload.service }}{% endif %}{% endif %}
+        {% elif event.kind == "alert_attached" %}{{ event.payload.alertname }}{% if event.payload.service %} on {{ event.payload.service }}{% endif %} added to this incident
+        {% elif event.kind == "alert_resolved" %}{{ event.payload.alertname }}{% if event.payload.service %} on {{ event.payload.service }}{% endif %} resolved
+        {% elif event.kind == "incident_resolved" %}Incident resolved
+        {% else %}{{ event.kind | replace("_", " ") }}{% endif %}
+      </div>
+      {% if event.payload.reason %}<div class="ev-reason muted">{{ event.payload.reason }}</div>{% endif %}
+    </div>
+  </li>
+  {% else %}
+  <li class="ev"><span class="muted">No events recorded.</span></li>
+  {% endfor %}
+</ol>
 
 <h2>Alerts ({{ alerts | length }})</h2>
 <p class="muted section-note">The messages the monitoring system sent, exactly as received. Labels say where an alert came from; the description says what crossed the line.</p>

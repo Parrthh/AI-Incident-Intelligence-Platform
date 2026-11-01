@@ -17,6 +17,7 @@ import os
 import signal
 import socket
 from dataclasses import dataclass
+from datetime import timedelta
 
 import structlog
 from prometheus_client import start_http_server
@@ -25,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
+from iip.incidents.resolver import DEFAULT_INTERVAL_SECONDS, run_resolver
 from iip.llm.base import LLMProvider
 from iip.llm.factory import build_provider
 from iip.queue.jobs import CONSUMER_GROUP
@@ -81,12 +83,21 @@ async def run_worker(
     )
     # Sweep for abandoned jobs at least as often as the shortest retry wait.
     reclaim = min(DEFAULT_RECLAIM_INTERVAL_SECONDS, deps.settings.queue_retry_base_seconds)
-    await run_consumer(
-        queue,
-        handlers,
-        stop,
-        reclaim_interval_seconds=reclaim,
-        concurrency=deps.settings.worker_concurrency,
+    await asyncio.gather(
+        run_consumer(
+            queue,
+            handlers,
+            stop,
+            reclaim_interval_seconds=reclaim,
+            concurrency=deps.settings.worker_concurrency,
+        ),
+        # Resolves incidents once their alerts have been quiet long enough (M3).
+        run_resolver(
+            deps.sessionmaker,
+            stop,
+            quiet=timedelta(seconds=deps.settings.incident_quiet_seconds),
+            interval=min(DEFAULT_INTERVAL_SECONDS, max(1.0, deps.settings.incident_quiet_seconds)),
+        ),
     )
 
 

@@ -8,7 +8,7 @@ from iip.api.app import create_app
 from iip.config import Environment, Settings
 from iip.ingest.alertmanager import AlertmanagerPayload
 from tests.fixtures.loader import load_alertmanager
-from tests.integration.helpers import run_summary_jobs
+from tests.integration.helpers import resolve_quiet_incidents_now, run_summary_jobs
 
 pytestmark = pytest.mark.integration
 
@@ -65,7 +65,8 @@ def test_captured_payloads_round_trip(client: TestClient) -> None:
         headers=AUTH,
     ).json()
 
-    assert resolved["resolved_incident_ids"] == opened["new_incident_ids"]
+    assert resolved["new_alerts"] == 0
+    resolve_quiet_incidents_now(client)
     detail = client.get(f"/v1/incidents/{opened['new_incident_ids'][0]}").json()
     assert detail["status"] == "resolved"
     assert detail["title"] == "payment error rate above 20%"

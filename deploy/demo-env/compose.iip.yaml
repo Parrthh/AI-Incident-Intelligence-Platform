@@ -54,6 +54,9 @@ services:
       REDIS_URL: redis://iip-redis:6379/0
       IIP_WEBHOOK_TOKEN: chaos-local-token
       IIP_RUN_WORKER_IN_API: "true"
+      IIP_SERVICE_GRAPH: builtin:otel-demo
+      # Resolve a minute after the last alert clears, so the run doesn't wait 5.
+      IIP_INCIDENT_QUIET_SECONDS: "60"
       IIP_LLM_PROVIDER: ${IIP_LLM_PROVIDER:-fake}
       IIP_LLM_MODEL: ${IIP_LLM_MODEL:-gemini-3.5-flash-lite}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}

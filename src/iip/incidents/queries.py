@@ -17,7 +17,7 @@ from sqlalchemy import and_, any_, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from iip.db.models import Alert, Analysis, Incident
+from iip.db.models import Alert, Analysis, Incident, IncidentEvent
 
 DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 100
@@ -114,6 +114,19 @@ async def get_incident_detail(
     alerts = sorted(incident.alerts, key=lambda a: a.starts_at)
     summary = (await latest_summaries(session, [incident_id])).get(incident_id)
     return incident, alerts, summary
+
+
+async def incident_timeline(session: AsyncSession, incident_id: uuid.UUID) -> list[IncidentEvent]:
+    """Timeline events, oldest first. Ties keep insertion order."""
+    return list(
+        (
+            await session.scalars(
+                select(IncidentEvent)
+                .where(IncidentEvent.incident_id == incident_id)
+                .order_by(IncidentEvent.at, IncidentEvent.created_at)
+            )
+        ).all()
+    )
 
 
 @dataclass(frozen=True)

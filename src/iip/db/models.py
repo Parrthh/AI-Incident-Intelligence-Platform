@@ -44,6 +44,7 @@ class Incident(Base):
         CheckConstraint("status IN ('open', 'resolved')", name="status"),
         Index("ix_incidents_started_at", text("started_at DESC")),
         Index("ix_incidents_status", "status"),
+        Index("ix_incidents_services", "services", postgresql_using="gin"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -137,6 +138,25 @@ class Analysis(Base):
     # an LLM call is in flight, cleared when it finishes.
     claimed_by: Mapped[str | None] = mapped_column(Text)
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class IncidentEvent(Base):
+    """One entry on an incident's timeline: what happened and, for decisions the
+    system made (grouping an alert, resolving), why."""
+
+    __tablename__ = "incident_events"
+    __table_args__ = (Index("ix_incident_events_incident_id_at", "incident_id", "at"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    incident_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("incidents.id", ondelete="CASCADE")
+    )
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    kind: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class OutboxMessage(Base):

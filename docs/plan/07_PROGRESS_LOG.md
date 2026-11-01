@@ -55,6 +55,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 | 0006 | pgvector over a dedicated vector DB | planned (M5) | |
 | 0007 | Server-rendered UI first, React when interactivity needs it | accepted | 2026-11-01 |
 | 0008 | Transactional outbox for jobs | accepted | 2026-11-01 |
+| 0009 | Alert correlation rules | accepted | 2026-11-01 |
 
 ## Known tech debt
 

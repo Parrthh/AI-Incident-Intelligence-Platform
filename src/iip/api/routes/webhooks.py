@@ -29,6 +29,9 @@ class IngestResponse(BaseModel):
     new_alerts: int
     updated_alerts: int
     new_incident_ids: list[uuid.UUID]
+    # Open incidents that this delivery added alerts to (correlation, ADR-0009).
+    attached_incident_ids: list[uuid.UUID]
+    # Always empty now: incidents resolve after a quiet period, in the background.
     resolved_incident_ids: list[uuid.UUID]
 
 
@@ -44,7 +47,7 @@ async def alertmanager_webhook(
     request: Request,
 ) -> IngestResponse:
     settings = request.app.state.settings
-    result = await ingest_alertmanager(session, payload)
+    result = await ingest_alertmanager(session, payload, request.app.state.correlation)
     if settings.llm_provider != "none":
         for incident_id in result.new_incident_ids:
             enqueue(session, settings.jobs_stream, JOB_SUMMARIZE, {"incident_id": str(incident_id)})
@@ -60,5 +63,6 @@ async def alertmanager_webhook(
         new_alerts=result.new_alerts,
         updated_alerts=result.updated_alerts,
         new_incident_ids=result.new_incident_ids,
+        attached_incident_ids=result.attached_incident_ids,
         resolved_incident_ids=result.resolved_incident_ids,
     )

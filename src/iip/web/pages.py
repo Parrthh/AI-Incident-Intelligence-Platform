@@ -14,7 +14,12 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 
 from iip import __version__
 from iip.api.deps import SessionDep
-from iip.incidents.queries import InvalidCursorError, get_incident_detail, list_incidents
+from iip.incidents.queries import (
+    InvalidCursorError,
+    get_incident_detail,
+    incident_timeline,
+    list_incidents,
+)
 
 
 def prompt_version(prompt_id: str) -> str:
@@ -70,8 +75,16 @@ async def incident_page(
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
     incident, alerts, summary = detail
+    timeline = await incident_timeline(session, incident_id)
     return templates.TemplateResponse(
         request,
         "incident.html",
-        _context(request, nav="incidents", incident=incident, alerts=alerts, summary=summary),
+        _context(
+            request,
+            nav="incidents",
+            incident=incident,
+            alerts=alerts,
+            summary=summary,
+            timeline=timeline,
+        ),
     )

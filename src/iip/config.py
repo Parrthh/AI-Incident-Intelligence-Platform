@@ -100,6 +100,16 @@ class Settings(BaseSettings):
     # installs run `iip worker` as its own container.
     run_worker_in_api: bool = False
 
+    # Alert correlation (M3, ADR-0009). Alerts on the same service, or on services
+    # connected in the service graph, join an open incident that started within
+    # the window. The graph is "builtin:otel-demo" or a path to a YAML file.
+    correlation_window_seconds: float = Field(default=600.0, gt=0, le=86_400)
+    service_graph: str | None = None
+    # An incident resolves once all its alerts have resolved and nothing has
+    # fired for this long. Short enough that the free demo resolves incidents
+    # before its server sleeps (15 idle minutes).
+    incident_quiet_seconds: float = Field(default=300.0, ge=0, le=86_400)
+
     # Redis stream the background jobs go through (ADR-0002). Tests use their own.
     jobs_stream: str = Field(default="iip.jobs", min_length=1, max_length=200)
     # First retry wait for a failed or abandoned job; doubles per attempt, capped

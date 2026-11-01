@@ -3,7 +3,7 @@
 import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import cast
 
 from fastapi import FastAPI
@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from iip.db.models import Analysis, OutboxMessage
+from iip.incidents.resolver import resolve_quiet_incidents
 from iip.ingest.alertmanager import AlertmanagerPayload
 from iip.ingest.service import ingest_alertmanager
 from iip.llm.base import LLMResponse
@@ -104,5 +105,21 @@ def run_summary_jobs(client: TestClient) -> int:
                 row.published_at = datetime.now(UTC)
             await session.commit()
         return len(rows)
+
+    return portal.call(work)
+
+
+def resolve_quiet_incidents_now(client: TestClient) -> list[uuid.UUID]:
+    """Run the resolver once with no quiet period, as if enough time had passed."""
+    app = cast(FastAPI, client.app)
+    portal = client.portal
+    assert portal is not None, "use inside `with TestClient(app)`"
+
+    async def work() -> list[uuid.UUID]:
+        sm: async_sessionmaker[AsyncSession] = app.state.sessionmaker
+        async with sm() as session:
+            resolved = await resolve_quiet_incidents(session, timedelta(0))
+            await session.commit()
+        return resolved
 
     return portal.call(work)
