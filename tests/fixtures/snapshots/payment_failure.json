@@ -1,0 +1,74 @@
+{
+  "id": "test-payment_failure-1",
+  "scenario": {
+    "name": "payment_failure",
+    "root_cause_service": "payment",
+    "category": "code_bug",
+    "also_correct": []
+  },
+  "recorded_at": "2026-11-01T21:35:00Z",
+  "source": {
+    "note": "hand-written test fixture, not a recorded chaos run"
+  },
+  "incident": {
+    "title": "payment error rate above 20%",
+    "status": "open",
+    "services": [
+      "payment",
+      "checkout"
+    ],
+    "started_at": "2026-11-01T21:34:51Z"
+  },
+  "alerts": [
+    {
+      "alertname": "HighErrorRate",
+      "status": "firing",
+      "service": "payment",
+      "severity": "critical",
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "payment"
+      },
+      "annotations": {
+        "description": "100% of payment spans ended in error over the last 3 minutes."
+      },
+      "starts_at": "2026-11-01T21:34:51Z",
+      "ends_at": null
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_trace_1",
+      "kind": "trace",
+      "source": "traces",
+      "summary": "payment: 8 failing charge spans, \"Payment request failed. Invalid token.\"",
+      "payload": {
+        "service": "payment",
+        "count": 8
+      },
+      "observed_at": "2026-11-01T21:32:28Z"
+    },
+    {
+      "id": "ev_log_1",
+      "kind": "log",
+      "source": "logs",
+      "summary": "payment log pattern seen 10 times since 21:32:28",
+      "payload": {
+        "service": "payment",
+        "count": 10
+      },
+      "observed_at": "2026-11-01T21:32:28Z"
+    },
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "source": "alerts",
+      "summary": "HighErrorRate on payment fired",
+      "payload": {
+        "service": "payment"
+      },
+      "observed_at": "2026-11-01T21:34:51Z"
+    }
+  ],
+  "unavailable": {}
+}

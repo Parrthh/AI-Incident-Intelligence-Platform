@@ -1,0 +1,10 @@
+description: Checkout can't reach payment. The demo does this by giving checkout a bad payment address.
+inject: {type: flag, flag: paymentUnreachable, variant: "on"}
+root_cause_service: payment
+category: service_down
+# Payment sends no spans at all, so only checkout alerts.
+watch_service: checkout
+also_correct:
+  # The demo fakes the outage with a wrong address in checkout; an engineer
+  # reading the DNS errors would rightly call it a checkout config problem.
+  - {service: checkout, category: config_error}

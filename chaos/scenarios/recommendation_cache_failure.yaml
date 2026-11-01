@@ -1,0 +1,4 @@
+description: The recommendation service's cache misbehaves and its memory grows.
+inject: {type: flag, flag: recommendationCacheFailure, variant: "on"}
+root_cause_service: recommendation
+category: resource_exhaustion

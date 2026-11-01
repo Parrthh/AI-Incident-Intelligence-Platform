@@ -24,14 +24,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
 from iip.analysis.citations import validate_citations
-from iip.analysis.context import render_evidence
+from iip.analysis.prompt import build_analysis_prompt
 from iip.analysis.schema import AnalysisResult, InvalidAnalysisError, parse_analysis
 from iip.db.models import Analysis, Evidence, Incident, IncidentEvent
 from iip.llm.base import LLMError, LLMProvider, LLMResponse
 from iip.llm.prompting import load_prompt
-from iip.llm.redact import redact
 from iip.llm.retry import with_retries
-from iip.llm.summarize import DEFAULT_LEASE_SECONDS, claim_analysis_row, format_alerts
+from iip.llm.summarize import DEFAULT_LEASE_SECONDS, claim_analysis_row
 from iip.observability.metrics import ANALYSIS_CITATIONS, LLM_REQUEST_DURATION, LLM_TOKENS
 
 logger = structlog.get_logger(__name__)
@@ -94,20 +93,21 @@ async def _build_input(session: AsyncSession, incident: Incident, budget: int) -
         source = str(event.payload.get("source"))
         if collected_after.get(source, datetime.min.replace(tzinfo=UTC)) < event.at:
             missing[source] = str(event.payload.get("reason"))
-    rendered = render_evidence(evidence, set(incident.services), incident.started_at, budget)
-    text = prompt.render(
+    built = build_analysis_prompt(
+        prompt,
         title=incident.title,
         status=incident.status,
-        started_at=incident.started_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        services=", ".join(incident.services) or "unknown",
-        alerts=format_alerts(list(incident.alerts)),
-        missing="\n".join(f"- {r}" for r in missing.values()) or "(none)",
-        evidence=rendered.text,
+        started_at=incident.started_at,
+        services=incident.services,
+        alerts=list(incident.alerts),
+        evidence=evidence,
+        missing=missing,
+        budget_tokens=budget,
     )
-    redacted = redact(text)
+    rendered = built.rendered
     return _Input(
-        prompt=redacted.text,
-        redactions=redacted.total,
+        prompt=built.text,
+        redactions=built.redactions,
         input_hash=rendered.fingerprint(prompt.id),
         known_ids={e.id for e in evidence},
         context={

@@ -1,0 +1,5 @@
+description: The product catalog's container is stopped.
+inject: {type: docker_stop, container: product-catalog}
+root_cause_service: product-catalog
+category: service_down
+watch_service: frontend

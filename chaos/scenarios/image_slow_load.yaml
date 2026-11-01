@@ -1,0 +1,7 @@
+description: Product images load 10 seconds late.
+inject: {type: flag, flag: imageSlowLoad, variant: "10sec"}
+root_cause_service: image-provider
+category: network_latency
+watch_service: frontend-proxy
+also_correct:
+  - {service: frontend-proxy, category: network_latency}

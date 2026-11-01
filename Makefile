@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint format typecheck test test-unit check run migrate dev dev-down dev-logs
+.PHONY: help install lint format typecheck test test-unit check eval run migrate dev dev-down dev-logs
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
@@ -25,6 +25,9 @@ test-unit: ## Run only fast unit tests
 	uv run pytest tests/unit
 
 check: lint typecheck test ## Everything CI runs
+
+eval: ## Root-cause eval on recorded snapshots (EVAL_ARGS="--provider gemini" for the real model)
+	uv run python -m iip.evals $(EVAL_ARGS)
 
 run: ## Run the API on the host with readable logs (uses .env)
 	IIP_LOG_JSON=false uv run iip api

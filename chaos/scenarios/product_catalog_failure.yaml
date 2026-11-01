@@ -1,0 +1,4 @@
+description: The product catalog fails for one specific product.
+inject: {type: flag, flag: productCatalogFailure, variant: "on"}
+root_cause_service: product-catalog
+category: code_bug

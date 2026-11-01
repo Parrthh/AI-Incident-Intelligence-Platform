@@ -7,11 +7,14 @@ turn a failure flag on, wait for the platform to open an incident and summarize
 it, turn the flag off, wait for the incident to resolve, then report timings and
 the captured Alertmanager payloads.
 
-Standard library only, so it runs on a bare CI runner. Results are printed as
+Standard library only, apart from PyYAML for the scenario catalog (the workflow
+runs it with `uv run --with pyyaml`). Results are printed as
 GitHub annotations and written to the job summary when running in Actions.
 """
 
 import argparse
+import base64
+import gzip
 import json
 import os
 import subprocess
@@ -30,43 +33,65 @@ IIP = "http://127.0.0.1:8000"
 PROMETHEUS = "http://127.0.0.1:9090"
 ALERTMANAGER = "http://127.0.0.1:9093"
 DEMO_WEBHOOK_URL = "https://iip-demo.onrender.com/v1/webhooks/alertmanager"
+LOCAL_TOKEN = "chaos-local-token"  # noqa: S105 - the local chaos stack's own test token
+
+
+SCENARIO_DIR = REPO / "chaos" / "scenarios"
 
 
 @dataclass(frozen=True)
 class Scenario:
+    """One failure to inject, and its known cause (ground truth for the eval).
+
+    Scenarios live in ``chaos/scenarios/*.yaml``. ``inject`` is one of:
+    - ``{type: flag, flag: paymentFailure, variant: "100%"}``: a demo feature flag
+    - ``{type: docker_stop, container: currency}``: stop a service's container
+    - ``{type: deploy_then_flag, service: payment, version: v2, flag: ..., variant: ...}``:
+      report a deploy, then turn the flag on (a "bad deploy")
+    """
+
     name: str
-    flag: str
-    on_variant: str
-    # Ground truth for evaluation (M4): the service that was actually broken.
+    description: str
+    inject: dict[str, Any]
     root_cause_service: str
     category: str
     # The service whose incident the run waits for. Usually the broken one, but a
     # service that is down entirely sends no spans, so only its callers alert.
     watch_service: str = ""
+    also_correct: tuple[dict[str, str], ...] = ()
 
     @property
     def watched(self) -> str:
         return self.watch_service or self.root_cause_service
 
+    def truth(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "root_cause_service": self.root_cause_service,
+            "category": self.category,
+            "also_correct": [
+                {"service": c["service"], "category": c["category"]} for c in self.also_correct
+            ],
+        }
 
-SCENARIOS = {
-    "payment_failure": Scenario(
-        name="payment_failure",
-        flag="paymentFailure",
-        on_variant="100%",
-        root_cause_service="payment",
-        category="code_bug",
-    ),
-    # The payment service is down: no payment spans at all, only its caller fails.
-    "payment_unreachable": Scenario(
-        name="payment_unreachable",
-        flag="paymentUnreachable",
-        on_variant="on",
-        root_cause_service="payment",
-        category="service_down",
-        watch_service="checkout",
-    ),
-}
+
+def load_scenarios() -> dict[str, Scenario]:
+    import yaml  # the workflow runs this with `uv run --with pyyaml`
+
+    scenarios: dict[str, Scenario] = {}
+    for path in sorted(SCENARIO_DIR.glob("*.yaml")):
+        data = yaml.safe_load(path.read_text())
+        scenario = Scenario(
+            name=path.stem,
+            description=data["description"],
+            inject=data["inject"],
+            root_cause_service=data["root_cause_service"],
+            category=data["category"],
+            watch_service=data.get("watch_service", ""),
+            also_correct=tuple(data.get("also_correct", [])),
+        )
+        scenarios[scenario.name] = scenario
+    return scenarios
 
 
 # ---------------------------------------------------------------- helpers
@@ -166,6 +191,35 @@ def prepare(demo_dir: Path, run_dir: Path, demo_version: str) -> None:
     os.chmod(am, 0o644)
 
 
+def inject(demo_dir: Path, scenario: Scenario) -> None:
+    spec = scenario.inject
+    kind = spec["type"]
+    if kind == "flag":
+        set_flag(demo_dir, spec["flag"], spec["variant"])
+    elif kind == "docker_stop":
+        subprocess.run(["docker", "stop", spec["container"]], check=True, capture_output=True)  # noqa: S603, S607
+        log(f"stopped container {spec['container']}")
+    elif kind == "deploy_then_flag":
+        post_json(
+            f"{IIP}/v1/deploys",
+            {"service": spec["service"], "version": spec["version"], "description": "chaos deploy"},
+            token=LOCAL_TOKEN,
+        )
+        log(f"reported deploy {spec['service']} {spec['version']}")
+        set_flag(demo_dir, spec["flag"], spec["variant"])
+    else:
+        raise ValueError(f"unknown injection type {kind!r}")
+
+
+def restore(demo_dir: Path, scenario: Scenario) -> None:
+    spec = scenario.inject
+    if spec["type"] in {"flag", "deploy_then_flag"}:
+        set_flag(demo_dir, spec["flag"], spec.get("off_variant", "off"))
+    elif spec["type"] == "docker_stop":
+        subprocess.run(["docker", "start", spec["container"]], check=True, capture_output=True)  # noqa: S603, S607
+        log(f"started container {spec['container']}")
+
+
 def set_flag(demo_dir: Path, flag: str, variant: str) -> None:
     path = demo_dir / "src" / "flagd" / "demo.flagd.json"
     data = json.loads(path.read_text())
@@ -234,7 +288,7 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
         raise RuntimeError("Prometheus did not load the iip-demo rule group")
 
     t_on = time.monotonic()
-    set_flag(demo_dir, scenario.flag, scenario.on_variant)
+    inject(demo_dir, scenario)
 
     target = scenario.watched
     pre_existing = {i["id"] for i in incidents()}
@@ -257,10 +311,10 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     summarized = wait_for("the incident's summary", summary_finished, 300, 5)
     t_summarized = time.monotonic()
 
-    evidence = check_evidence(target_id, target)
+    evidence = check_evidence(target_id, target, scenario, run_dir)
     analysis = check_analysis(target_id, scenario)
 
-    set_flag(demo_dir, scenario.flag, "off")
+    restore(demo_dir, scenario)
     t_off = time.monotonic()
     wait_for(f"all {target} incidents to resolve", lambda: not target_incidents("open"), 1200, 20)
     t_resolved = time.monotonic()
@@ -296,7 +350,9 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     }
 
 
-def check_evidence(incident_id: str, service: str) -> dict[str, Any]:
+def check_evidence(
+    incident_id: str, service: str, scenario: Scenario, run_dir: Path
+) -> dict[str, Any]:
     """Evidence is collected, then collected again with Loki stopped (M3 acceptance).
 
     1. Wait for the first collection and count evidence by kind.
@@ -311,6 +367,7 @@ def check_evidence(incident_id: str, service: str) -> dict[str, Any]:
         return inc if inc.get("enriched_at") else None
 
     first = wait_for("evidence collection", enriched, 300, 5)
+    export_snapshot(first, scenario, run_dir)
     seconds_to_evidence = round(time.monotonic() - t0)
     kinds: dict[str, int] = {}
     for item in first["evidence"]:
@@ -328,7 +385,7 @@ def check_evidence(incident_id: str, service: str) -> dict[str, Any]:
             "version": "chaos-hotfix",
             "description": "Simulated hotfix deploy during the incident",
         },
-        token="chaos-local-token",  # noqa: S106 - the local chaos stack's own test token
+        token=LOCAL_TOKEN,
     )
 
     def logs_missing() -> list[str] | None:
@@ -361,6 +418,62 @@ def check_evidence(incident_id: str, service: str) -> dict[str, Any]:
             for kind in kinds
         },
     }
+
+
+def export_snapshot(incident: dict[str, Any], scenario: Scenario, run_dir: Path) -> None:
+    """Record what the analysis sees, plus the known cause, for the offline eval (M4).
+
+    Written to the run directory and printed to the log (gzip, base64) between
+    markers, so it can be collected without downloading artifacts.
+    """
+    unavailable = {
+        t["source"]: t["reason"]
+        for t in incident["timeline"]
+        if t["kind"] == "evidence_unavailable" and t.get("source")
+    }
+    evidence = []
+    for e in incident["evidence"]:
+        payload = {k: v for k, v in e["payload"].items() if k != "points"}  # not in the prompt
+        evidence.append({**e, "payload": payload})
+    run_id = os.environ.get("GITHUB_RUN_ID", "local")
+    attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "1")
+    snapshot = {
+        "id": f"{scenario.name}-{run_id}-{attempt}",
+        "scenario": scenario.truth(),
+        "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "source": {
+            "commit": os.environ.get("GITHUB_SHA", "local"),
+            "run_id": run_id,
+            "demo_version": os.environ.get("OTEL_DEMO_REF", ""),
+        },
+        "incident": {k: incident[k] for k in ("title", "status", "services", "started_at")},
+        "alerts": [
+            {
+                k: a[k]
+                for k in (
+                    "alertname",
+                    "status",
+                    "service",
+                    "severity",
+                    "labels",
+                    "annotations",
+                    "starts_at",
+                    "ends_at",
+                )
+            }
+            for a in incident["alerts"]
+        ],
+        "evidence": evidence,
+        "unavailable": unavailable,
+    }
+    text = json.dumps(snapshot, indent=2, sort_keys=True)
+    (run_dir / "snapshot.json").write_text(text)
+    packed = base64.b64encode(gzip.compress(text.encode())).decode()
+    print(f"SNAPSHOT-BEGIN {snapshot['id']}")
+    for i in range(0, len(packed), 4000):
+        print(packed[i : i + 4000])
+    print("SNAPSHOT-END", flush=True)
+    log(f"snapshot {snapshot['id']}: {len(evidence)} evidence items, {len(text)} bytes")
 
 
 def check_analysis(incident_id: str, scenario: Scenario) -> dict[str, Any]:
@@ -468,16 +581,21 @@ def report(result: dict[str, Any], run_dir: Path) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--demo-dir", type=Path, required=True)
-    parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="payment_failure")
+    parser.add_argument("--demo-dir", type=Path, default=Path("../otel-demo"))
+    scenarios = load_scenarios()
+    parser.add_argument("--scenario", choices=sorted(scenarios), default="payment_failure")
+    parser.add_argument("--list", action="store_true", help="print scenario names as JSON")
     parser.add_argument("--run-dir", type=Path, default=REPO / "chaos" / "runs" / "latest")
     parser.add_argument("--demo-version", default="3.1.0")
     args = parser.parse_args()
+    if args.list:
+        print(json.dumps(sorted(scenarios)))
+        return 0
 
     try:
         result = run(
             args.demo_dir.resolve(),
-            SCENARIOS[args.scenario],
+            scenarios[args.scenario],
             args.run_dir.resolve(),
             args.demo_version,
         )

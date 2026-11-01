@@ -1,0 +1,9 @@
+description: A deploy to payment is reported, then payment starts failing (a bad deploy).
+inject:
+  type: deploy_then_flag
+  service: payment
+  version: v2.7.0
+  flag: paymentFailure
+  variant: "100%"
+root_cause_service: payment
+category: bad_deploy
