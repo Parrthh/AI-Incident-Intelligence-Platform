@@ -1,0 +1,87 @@
+name: Chaos run
+
+# Starts the OpenTelemetry Demo with Alertmanager and this platform, breaks a
+# service on purpose, and checks that the platform opens, summarizes and resolves
+# an incident. Captured Alertmanager payloads are printed as annotations.
+#
+# Runs on PRs that touch the chaos setup, weekly, and on demand. If the
+# IIP_DEMO_WEBHOOK_TOKEN secret is set, alerts are also forwarded to the hosted
+# demo, so its public UI shows real incidents.
+on:
+  pull_request:
+    paths:
+      - "deploy/demo-env/**"
+      - "chaos/**"
+      - ".github/workflows/chaos.yml"
+  schedule:
+    - cron: "17 6 * * 1"  # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chaos-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OTEL_DEMO_REF: "3.1.0"  # pinned release of open-telemetry/opentelemetry-demo
+
+jobs:
+  payment-failure:
+    # Secrets aren't available to fork PRs; skip there instead of failing.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      IIP_DEMO_WEBHOOK_TOKEN: ${{ secrets.IIP_DEMO_WEBHOOK_TOKEN }}
+      IIP_IMAGE: iip:chaos
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Free disk space
+        # The demo pulls many images; the default runner disk is tight.
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker system prune -af >/dev/null
+          df -h /
+
+      - name: Check alert rules
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/deploy/demo-env:/rules:ro" \
+            quay.io/prometheus/prometheus:v3.13.1 check rules /rules/prometheus-rules.yml
+
+      - uses: docker/setup-buildx-action@v4
+      - name: Build platform image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          push: false
+          tags: ${{ env.IIP_IMAGE }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check out the OpenTelemetry Demo
+        run: git clone --depth 1 --branch "$OTEL_DEMO_REF" https://github.com/open-telemetry/opentelemetry-demo.git "$RUNNER_TEMP/otel-demo"
+
+      - name: Choose LLM
+        # Real Gemini summaries when the key is available, the fake provider otherwise.
+        run: |
+          if [ -n "$GEMINI_API_KEY" ]; then echo "IIP_LLM_PROVIDER=gemini" >> "$GITHUB_ENV"; else echo "IIP_LLM_PROVIDER=fake" >> "$GITHUB_ENV"; fi
+
+      - name: Run payment_failure scenario
+        run: python3 chaos/run.py --demo-dir "$RUNNER_TEMP/otel-demo" --scenario payment_failure --run-dir "$RUNNER_TEMP/chaos-run"
+
+      - name: Stop everything
+        if: always()
+        working-directory: ${{ runner.temp }}/otel-demo
+        run: |
+          docker compose --env-file .env --env-file .env.override \
+            -f compose.yaml -f compose.observability.yaml -f "$GITHUB_WORKSPACE/deploy/demo-env/compose.iip.yaml" \
+            down --volumes --remove-orphans || true
+        env:
+          IIP_REPO: ${{ github.workspace }}
+          IIP_RUN_DIR: ${{ runner.temp }}/chaos-run

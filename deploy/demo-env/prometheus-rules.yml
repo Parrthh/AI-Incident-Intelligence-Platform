@@ -1,0 +1,51 @@
+# Alert rules for the OpenTelemetry Demo, mounted into the demo's Prometheus by
+# compose.iip.yaml. They use the demo's span metrics (from the OTel Collector's
+# spanmetrics connector), labeled by service_name. See queries.md.
+#
+# load-generator is excluded everywhere: it's the demo's traffic client, not a
+# service. Its spans cover whole user journeys (p95 around 4 s even when healthy)
+# and inherit every downstream error, so alerting on it is pure noise.
+groups:
+  - name: iip-demo
+    # Evaluate faster than the 1m default so chaos runs finish sooner.
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        # Share of spans with error status, per service, over 3 minutes. 20%, not
+        # 5%: the demo has normal background payment errors (around 7%), and the
+        # first chaos run flapped on them. The second condition ignores services
+        # with almost no traffic, where one failed call would be "100% errors".
+        expr: |
+          (
+            sum by (service_name) (rate(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR",service_name!="load-generator"}[3m]))
+            /
+            sum by (service_name) (rate(traces_span_metrics_calls_total{service_name!="load-generator"}[3m]))
+          ) > 0.20
+          and
+          sum by (service_name) (rate(traces_span_metrics_calls_total{service_name!="load-generator"}[3m])) > 0.05
+        for: 1m
+        # Stay firing through one dip below the threshold, so a noisy series
+        # doesn't resolve and re-fire as a new incident every few minutes.
+        keep_firing_for: 1m
+        labels:
+          severity: critical
+          service: "{{ $labels.service_name }}"
+        annotations:
+          summary: "{{ $labels.service_name }} error rate above 20%"
+          description: "{{ $value | humanizePercentage }} of {{ $labels.service_name }} spans ended in error over the last 3 minutes."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, service_name) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name!="load-generator"}[3m]))
+          ) > 1500
+          and
+          sum by (service_name) (rate(traces_span_metrics_calls_total{service_name!="load-generator"}[3m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: "{{ $labels.service_name }}"
+        annotations:
+          summary: "{{ $labels.service_name }} p95 latency above 1.5s"
+          description: "p95 span duration for {{ $labels.service_name }} is {{ $value | humanize }} ms over the last 3 minutes."
