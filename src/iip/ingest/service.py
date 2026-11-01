@@ -22,8 +22,12 @@ How it's done, per alert, inside one transaction:
 
 Correlation reads open incidents and then writes, so two alerts arriving at the
 same moment (Alertmanager sends one request per alert group, in parallel) could
-both decide "no incident yet" and open two. A transaction-scoped advisory lock
-makes correlation one-at-a-time; it is held only until this transaction commits.
+both decide "no incident yet" and open two. Before correlating, the transaction
+takes Postgres advisory locks named after each firing alert's service, the
+services connected to it, and its fingerprint. Two alerts that could affect each
+other's decision always share a lock name, so they take turns; unrelated alerts
+don't wait for each other. All locks are taken in one sorted batch, so two
+transactions can't deadlock, and they are released at commit.
 """
 
 import uuid
@@ -37,10 +41,10 @@ from sqlalchemy import (
     Label,
     case,
     exists,
-    func,
     literal_column,
     or_,
     select,
+    text,
     update,
 )
 from sqlalchemy.dialects.postgresql import insert
@@ -65,8 +69,8 @@ class CorrelationConfig:
 
 DEFAULT_CORRELATION = CorrelationConfig()
 
-# Arbitrary constant naming the correlation lock (migrations use 7392001).
-CORRELATION_LOCK_KEY = 7392002
+# Arbitrary constant naming the correlation locks (migrations use 7392001).
+CORRELATION_LOCK_CLASS = 7392002
 
 SEVERITY_RANK = {"critical": 3, "error": 2, "warning": 1, "info": 0}
 
@@ -90,6 +94,7 @@ async def ingest_alertmanager(
 ) -> IngestResult:
     """Store every alert in the payload. The caller owns the transaction (commit)."""
     result = IngestResult(received=len(payload.alerts))
+    await _lock_for_correlation(session, payload, correlation)
     for alert in payload.alerts:
         await _ingest_one(session, alert, result, correlation)
     logger.info(
@@ -180,7 +185,6 @@ async def _correlate(
     result: IngestResult,
     correlation: CorrelationConfig,
 ) -> None:
-    await session.execute(select(func.pg_advisory_xact_lock(CORRELATION_LOCK_KEY)))
     facts = AlertFacts(
         fingerprint=alert.fingerprint,
         alertname=alert.alertname,
@@ -239,6 +243,29 @@ async def _correlate(
         )
 
     await session.execute(update(Alert).where(Alert.id == alert_id).values(incident_id=incident_id))
+
+
+async def _lock_for_correlation(
+    session: AsyncSession, payload: AlertmanagerPayload, correlation: CorrelationConfig
+) -> None:
+    names: set[str] = set()
+    for alert in payload.alerts:
+        if alert.status != "firing":
+            continue
+        names.add(f"fp:{alert.fingerprint}")
+        if alert.service:
+            names.add(f"svc:{alert.service}")
+            names.update(f"svc:{n}" for n in correlation.graph.neighbors(alert.service))
+    if not names:
+        return
+    await session.execute(
+        text(
+            "SELECT pg_advisory_xact_lock(:cls, h) "
+            "FROM (SELECT DISTINCT hashtext(n) AS h FROM unnest(CAST(:names AS text[])) AS n "
+            "ORDER BY h) AS keys"
+        ),
+        {"cls": CORRELATION_LOCK_CLASS, "names": sorted(names)},
+    )
 
 
 async def _candidate_incidents(
