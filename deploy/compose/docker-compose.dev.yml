@@ -1,0 +1,62 @@
+# Local development stack: API + Postgres (with pgvector) + Redis.
+#   make dev        start everything (rebuilds the API image)
+#   make dev-down   stop (data volumes are kept)
+name: iip-dev
+
+services:
+  postgres:
+    # Matches the Postgres major version used on Neon for the hosted demo.
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: iip
+      POSTGRES_PASSWORD: iip-dev-only  # local only; never used outside this file
+      POSTGRES_DB: iip
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iip -d iip"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    # Append-only file: queued messages survive a Redis restart.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      args:
+        GIT_SHA: dev
+    environment:
+      IIP_ENV: development
+      IIP_LOG_JSON: "false"
+      IIP_DATABASE_URL: postgresql://iip:iip-dev-only@postgres:5432/iip
+      IIP_REDIS_URL: redis://redis:6379/0
+    # Apply migrations, then serve. Safe even with several API replicas because
+    # migrations take an advisory lock.
+    command: ["sh", "-c", "iip migrate && exec iip api"]
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 25s
+
+volumes:
+  postgres-data:
+  redis-data:

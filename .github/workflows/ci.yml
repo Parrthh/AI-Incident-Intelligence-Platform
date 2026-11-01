@@ -51,6 +51,28 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: iip
+          POSTGRES_PASSWORD: iip-ci-only
+          POSTGRES_DB: iip
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U iip -d iip"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      IIP_TEST_DATABASE_URL: postgresql://iip:iip-ci-only@127.0.0.1:5432/iip
+      IIP_TEST_REDIS_URL: redis://127.0.0.1:6379/0
+      # In CI a missing service is a failure, never a silent skip.
+      IIP_REQUIRE_INTEGRATION: "1"
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v7
@@ -59,4 +81,39 @@ jobs:
           cache-dependency-glob: pyproject.toml
       - run: uv sync
       - name: pytest
-        run: uv run pytest --cov=iip --cov-report=term-missing --cov-report=xml
+        # -rs lists skipped tests, so a silently skipped integration suite is visible.
+        run: uv run pytest -rs --cov=iip --cov-report=term-missing --cov-report=xml
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: iip:ci
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test the image
+        run: |
+          docker run -d --name iip -p 8000:8000 -e IIP_ENV=development iip:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/healthz; then break; fi
+            sleep 1
+          done
+          echo
+          curl -fsS http://127.0.0.1:8000/version | tee version.json
+          grep -q '"git_sha":"${{ github.sha }}"' version.json
+          # Container must not run as root.
+          test "$(docker exec iip id -u)" != "0"
+          docker inspect --format '{{.State.Health.Status}}' iip
+      - name: Container logs
+        if: always()
+        run: docker logs iip || true
