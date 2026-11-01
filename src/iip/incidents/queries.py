@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, any_, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -61,7 +61,8 @@ async def list_incidents(
     if status:
         stmt = stmt.where(Incident.status == status)
     if service:
-        stmt = stmt.where(Incident.services.any(service))
+        # SQL: :service = ANY(services)
+        stmt = stmt.where(literal(service) == any_(Incident.services))
     if cursor:
         after_started, after_id = decode_cursor(cursor)
         stmt = stmt.where(
