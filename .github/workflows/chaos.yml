@@ -29,9 +29,14 @@ env:
   OTEL_DEMO_REF: "3.1.0"  # pinned release of open-telemetry/opentelemetry-demo
 
 jobs:
-  payment-failure:
+  scenario:
+    name: chaos (${{ matrix.scenario }})
     # Secrets aren't available to fork PRs; skip there instead of failing.
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [payment_failure, cart_failure, payment_unreachable]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -73,8 +78,8 @@ jobs:
         run: |
           if [ -n "$GEMINI_API_KEY" ]; then echo "IIP_LLM_PROVIDER=gemini" >> "$GITHUB_ENV"; else echo "IIP_LLM_PROVIDER=fake" >> "$GITHUB_ENV"; fi
 
-      - name: Run payment_failure scenario
-        run: python3 chaos/run.py --demo-dir "$RUNNER_TEMP/otel-demo" --scenario payment_failure --run-dir "$RUNNER_TEMP/chaos-run"
+      - name: Run the scenario
+        run: python3 chaos/run.py --demo-dir "$RUNNER_TEMP/otel-demo" --scenario "${{ matrix.scenario }}" --run-dir "$RUNNER_TEMP/chaos-run"
 
       - name: Stop everything
         if: always()
