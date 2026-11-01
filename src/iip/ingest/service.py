@@ -33,18 +33,17 @@ from datetime import UTC, datetime, timedelta
 import structlog
 from sqlalchemy import (
     Boolean,
+    ColumnElement,
     Label,
-    Text,
     case,
     exists,
     func,
-    literal,
     literal_column,
     or_,
     select,
     update,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, insert
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from iip.core.correlation import AlertFacts, OpenIncident, correlate
@@ -253,11 +252,11 @@ async def _candidate_incidents(
     same_fingerprint = exists().where(
         Alert.incident_id == Incident.id, Alert.fingerprint == alert.fingerprint
     )
-    conditions = [same_fingerprint]
+    conditions: list[ColumnElement[bool]] = [same_fingerprint]
     if alert.service is not None:
         nearby = sorted({alert.service, *correlation.graph.neighbors(alert.service)})
         conditions.append(
-            Incident.services.op("&&")(literal(nearby, type_=ARRAY(Text)))
+            Incident.services.overlap(nearby)
             & Incident.started_at.between(
                 alert.starts_at - correlation.window, alert.starts_at + correlation.window
             )

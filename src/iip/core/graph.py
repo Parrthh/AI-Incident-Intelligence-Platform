@@ -13,6 +13,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from importlib.resources import files
 from pathlib import Path
+from typing import cast
 
 import yaml
 
@@ -57,10 +58,12 @@ def load_graph(source: str | None) -> ServiceGraph:
         text = files("iip.core").joinpath(f"graphs/{name}.yaml").read_text(encoding="utf-8")
     else:
         text = Path(source).read_text(encoding="utf-8")
-    data = yaml.safe_load(text) or {}
-    calls = data.get("calls") or {}
+    data: object = yaml.safe_load(text) or {}
+    calls: object = data.get("calls") if isinstance(data, dict) else None  # pyright: ignore[reportUnknownMemberType]
     if not isinstance(calls, dict):
         raise ValueError("service graph: `calls` must be a map of caller to a list of callees")
-    return ServiceGraph.from_calls(
-        {str(k): [str(v) for v in (vs or [])] for k, vs in calls.items()}  # pyright: ignore[reportUnknownVariableType, reportUnknownArgumentType]
-    )
+    parsed: dict[str, list[str]] = {}
+    for caller, callees in cast(dict[object, object], calls).items():
+        items = cast(list[object], callees) if isinstance(callees, list) else []
+        parsed[str(caller)] = [str(c) for c in items]
+    return ServiceGraph.from_calls(parsed)
