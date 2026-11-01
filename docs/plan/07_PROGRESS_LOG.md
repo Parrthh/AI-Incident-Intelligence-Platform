@@ -5,11 +5,11 @@ Claude updates this at the end of every work session, in the same PR as the work
 ## Current status
 
 - **Active milestone:** M0 Foundations
-- **Current step:** M0 step 12: waiting for Parth to connect the Render Blueprint
-- **Next up:** set `DEMO_URL` in the deploy check workflow, confirm the first deploy, then M1
-- **Blockers:** M0 step 12 needs Parth (Render Blueprint, see setup guide section 6).
+- **Current step:** M0 acceptance check (deploy check verifying `/readyz` on the live demo)
+- **Next up:** M1 walking skeleton (Alertmanager webhook, first LLM summary, UI v0)
+- **Blockers:** none
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
-- **Live URL:** (after M0 step 12)
+- **Live URL:** https://iip-demo.onrender.com (free tier: sleeps after 15 idle minutes, about 1 minute to wake)
 
 ## Open questions for Parth
 
@@ -29,7 +29,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 | Milestone | Status | Started | Finished | Notes |
 |---|---|---|---|---|
-| Setup (owner tasks) | in progress | 2026-10-31 | | All done except Render (waits for `render.yaml`) |
+| Setup (owner tasks) | done | 2026-10-31 | 2026-11-01 | Render connected; Render connector added to the Claude session |
 | M0 Foundations | in progress | 2026-10-31 | | |
 | M1 Walking skeleton | not started | | | |
 | M2 Async pipeline | not started | | | |
@@ -66,7 +66,10 @@ Only real measurements. Every row needs method, environment and commit.
 
 | Date | Metric | Value | How measured | Environment | Commit |
 |---|---|---|---|---|---|
-| | | | | | |
+| 2026-11-01 | CI wall time on `main` (lint, typecheck, test, build in parallel) | 58 s (slowest job: `build`; test 30 s, typecheck 10 s, lint 9 s) | GitHub check run start/end timestamps | GitHub-hosted `ubuntu-latest` | f2fc9da |
+| 2026-11-01 | Multi-arch image publish (amd64 + arm64) | 72 s | `publish` check run duration | GitHub-hosted `ubuntu-latest`, Docker layer cache warm | f2fc9da |
+| 2026-11-01 | Render deploy, start to live | 35 s (build 14 s with cache) | Render events `deploy_started` to `deploy_ended` | Render free, Virginia | f2fc9da |
+| 2026-11-01 | Container start to serving (incl. migrations against Neon) | 4 s (migrations 2 s) | App log timestamps `migrations_starting` to `Uvicorn running` | Render free, Neon free (us-east-1) | f2fc9da |
 
 ### Eval history (from M4)
 
@@ -81,6 +84,21 @@ Only real measurements. Every row needs method, environment and commit.
 | | | | | | |
 
 ## Session log
+
+### 2026-11-01 (deploy)
+Milestone / step: M0 steps 12 and 13
+Done:
+- Parth connected the Render Blueprint and the Render connector.
+- First deploys failed and were fixed with the Render logs:
+  - Exit 127: the shell start command was mangled by Render's command parsing. Fixed with `iip api --migrate` (PR #7), and CI now starts the image with the exact command from `render.yaml`.
+  - Exit 3: `REDIS_URL` was not a `rediss://` URL. Settings now reject wrong schemes at startup with a message that never includes the value (PR #8). Parth corrected the value.
+  - `/readyz` 503 with `AuthenticationError` from Upstash: wrong password in the URL; Parth re-copied it.
+  - `/version` reported `unknown` on Render: the image's empty `IIP_GIT_SHA` hid `RENDER_GIT_COMMIT`. Fixed in PR #8.
+- Deploy check enabled (`DEMO_URL` set). Zero-downtime handover confirmed in logs: the new instance served before the old one shut down cleanly.
+Metrics captured:
+- CI, publish, deploy and startup timings (see Measured metrics).
+Next:
+- Confirm the deploy check passes on this commit, then start M1.
 
 ### 2026-11-01
 Milestone / step: M0 steps 1 to 11, 13, 14
