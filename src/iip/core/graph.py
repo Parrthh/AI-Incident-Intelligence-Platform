@@ -59,7 +59,7 @@ def load_graph(source: str | None) -> ServiceGraph:
     else:
         text = Path(source).read_text(encoding="utf-8")
     data: object = yaml.safe_load(text) or {}
-    calls: object = data.get("calls") if isinstance(data, dict) else None  # pyright: ignore[reportUnknownMemberType]
+    calls: object = cast(dict[str, object], data).get("calls") if isinstance(data, dict) else None
     if not isinstance(calls, dict):
         raise ValueError("service graph: `calls` must be a map of caller to a list of callees")
     parsed: dict[str, list[str]] = {}
