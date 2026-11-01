@@ -103,6 +103,7 @@ class TimelineEventOut(BaseModel):
     service: str | None = None
     rule: str | None = None
     source: str | None = None
+    duration_ms: int | None = None
 
     @classmethod
     def from_row(cls, row: IncidentEvent) -> "TimelineEventOut":
@@ -115,6 +116,7 @@ class TimelineEventOut(BaseModel):
             service=p.get("service"),
             rule=p.get("rule"),
             source=p.get("source"),
+            duration_ms=p.get("duration_ms"),
         )
 
 

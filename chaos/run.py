@@ -40,6 +40,13 @@ class Scenario:
     # Ground truth for evaluation (M4): the service that was actually broken.
     root_cause_service: str
     category: str
+    # The service whose incident the run waits for. Usually the broken one, but a
+    # service that is down entirely sends no spans, so only its callers alert.
+    watch_service: str = ""
+
+    @property
+    def watched(self) -> str:
+        return self.watch_service or self.root_cause_service
 
 
 SCENARIOS = {
@@ -49,6 +56,15 @@ SCENARIOS = {
         on_variant="100%",
         root_cause_service="payment",
         category="code_bug",
+    ),
+    # The payment service is down: no payment spans at all, only its caller fails.
+    "payment_unreachable": Scenario(
+        name="payment_unreachable",
+        flag="paymentUnreachable",
+        on_variant="on",
+        root_cause_service="payment",
+        category="service_down",
+        watch_service="checkout",
     ),
 }
 
@@ -204,10 +220,10 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     wait_for("platform readiness", lambda: get_json(f"{IIP}/readyz")["status"] == "ready", 600)
     log("platform is ready")
     traffic = wait_for(
-        f"baseline traffic for {scenario.root_cause_service}",
+        f"baseline traffic for {scenario.watched}",
         lambda: prom_query(
             "sum(rate(traces_span_metrics_calls_total"
-            f'{{service_name="{scenario.root_cause_service}"}}[3m])) > 0'
+            f'{{service_name="{scenario.watched}"}}[3m])) > 0'
         ),
         900,
         15,
@@ -220,7 +236,7 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     t_on = time.monotonic()
     set_flag(demo_dir, scenario.flag, scenario.on_variant)
 
-    target = scenario.root_cause_service
+    target = scenario.watched
     pre_existing = {i["id"] for i in incidents()}
 
     def target_incidents(status: str | None = None) -> list[dict[str, Any]]:
@@ -241,7 +257,7 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     summarized = wait_for("the incident's summary", summary_finished, 300, 5)
     t_summarized = time.monotonic()
 
-    evidence = check_evidence(target_id)
+    evidence = check_evidence(target_id, target)
 
     set_flag(demo_dir, scenario.flag, "off")
     t_off = time.monotonic()
@@ -278,7 +294,7 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     }
 
 
-def check_evidence(incident_id: str) -> dict[str, Any]:
+def check_evidence(incident_id: str, service: str) -> dict[str, Any]:
     """Evidence is collected, then collected again with Loki stopped (M3 acceptance).
 
     1. Wait for the first collection and count evidence by kind.
@@ -306,7 +322,7 @@ def check_evidence(incident_id: str) -> dict[str, Any]:
     post_json(
         f"{IIP}/v1/deploys",
         {
-            "service": "payment",
+            "service": service,
             "version": "chaos-hotfix",
             "description": "Simulated hotfix deploy during the incident",
         },
@@ -333,6 +349,11 @@ def check_evidence(incident_id: str) -> dict[str, Any]:
         "loki_down_note": loki_down[0],
         "evidence_after_loki_down": len(after["evidence"]),
         "deploy_evidence": [e["summary"] for e in after["evidence"] if e["kind"] == "deploy"],
+        "source_ms": {
+            t["source"]: t.get("duration_ms")
+            for t in first["timeline"]
+            if t["kind"] == "evidence_collected"
+        },
         "examples": {
             kind: next(e["summary"] for e in first["evidence"] if e["kind"] == kind)
             for kind in kinds
