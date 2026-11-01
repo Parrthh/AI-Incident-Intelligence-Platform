@@ -92,7 +92,10 @@ class StreamQueue:
     block_ms: int = 30_000
     batch: int = 10
     max_deliveries: int = 5
-    base_backoff_s: float = 10.0
+    # Must be longer than the slowest handler run. Otherwise a message whose
+    # handler is still working looks abandoned and a second worker takes it too.
+    # Summaries take at most about 95 s (30 s LLM timeout, 3 attempts, backoff).
+    base_backoff_s: float = 120.0
     max_backoff_s: float = 600.0
     _group_ready: bool = field(default=False, init=False)
 
@@ -101,7 +104,7 @@ class StreamQueue:
         return f"{self.stream}.dlq"
 
     def backoff_s(self, deliveries: int) -> float:
-        """Wait before the next delivery: 10s, 20s, 40s ... capped."""
+        """Wait before the next delivery: 2, 4, 8 minutes ... capped at 10."""
         return min(self.max_backoff_s, self.base_backoff_s * 2 ** max(0, deliveries - 1))
 
     async def ensure_group(self) -> None:

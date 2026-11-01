@@ -22,7 +22,7 @@ Option 3. One stream per job kind, one consumer group (`workers`), one consumer 
 
 - Workers read with `XREADGROUP ... BLOCK 30000`: one command per 30 s when idle, instead of constant polling.
 - Handlers succeed, raise `PermanentError` (dead-letter now) or raise anything else (retry).
-- A failed message is not acknowledged. Every 30 s a sweep (`XPENDING`) reclaims messages whose idle time is past `10 s * 2^(deliveries - 1)` (capped at 10 minutes). `XCLAIM` re-checks the idle time atomically, so two sweepers can't take the same message.
+- A failed message is not acknowledged. Every 30 s a sweep (`XPENDING`) reclaims messages whose idle time is past `120 s * 2^(deliveries - 1)` (capped at 10 minutes). The base wait must be longer than the slowest handler run (about 95 s for a summary), or a message still being worked on would look abandoned and a second worker would take it too. `XCLAIM` re-checks the idle time atomically, so two sweepers can't take the same message.
 - After 5 deliveries the message is copied to `<stream>.dlq` with the error and delivery count, then acknowledged.
 - Streams are trimmed approximately to 10,000 entries.
 
@@ -32,5 +32,5 @@ Option 3. One stream per job kind, one consumer group (`workers`), one consumer 
 - Idle cost: about 2 blocking reads and 2 sweeps a minute, roughly 4 commands a minute or about 175K a month for a worker that never sleeps. The demo's web service sleeps after 15 minutes idle, so real use is lower. This leaves room for the API's own commands under the 500K limit.
 - Blocking reads need a socket timeout longer than the block time, so the consumer uses its own Redis client (`create_redis(url, socket_timeout=...)`).
 - A message only reaches Redis if the publish succeeds. PR B of M2 adds a transactional outbox in Postgres so a job written with the alert can't be lost when Redis is briefly down.
-- The worst-case delay before a job is dead-lettered is about 150 s of backoff plus sweep intervals. Retries inside one delivery (the LLM client's own backoff) are separate and short.
+- A crashed worker's job is picked up again after about 2 minutes. A job that keeps failing is dead-lettered after about 24 minutes of backoff. Retries inside one delivery (the LLM client's own backoff) are separate and short.
 - Redis is now required for background work. Self-hosters already run it (docker compose includes it).

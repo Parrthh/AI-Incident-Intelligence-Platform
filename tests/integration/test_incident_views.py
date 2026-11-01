@@ -9,6 +9,7 @@ from pydantic import SecretStr
 from iip.api.app import create_app
 from iip.config import Environment, Settings
 from tests.fixtures.loader import load_alertmanager
+from tests.integration.helpers import run_summary_jobs
 
 pytestmark = pytest.mark.integration
 
@@ -33,6 +34,7 @@ def client(migrated_database_url: str) -> Iterator[TestClient]:
 def send(client: TestClient, payload: dict[str, Any]) -> list[str]:
     response = client.post("/v1/webhooks/alertmanager", json=payload, headers=AUTH)
     assert response.status_code == 202
+    run_summary_jobs(client)
     return response.json()["new_incident_ids"]
 
 

@@ -82,7 +82,10 @@ jobs:
       - run: uv sync
       - name: pytest
         # -rs lists skipped tests, so a silently skipped integration suite is visible.
-        run: uv run pytest -rs --cov=iip --cov-report=term-missing --cov-report=xml
+        run: uv run pytest -rs --cov=iip --cov-report=term-missing --cov-report=xml --junitxml=junit.xml
+      - name: annotate failed tests
+        if: failure()
+        run: uv run python scripts/junit_annotations.py junit.xml
 
   build:
     name: build
