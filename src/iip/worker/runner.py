@@ -29,7 +29,7 @@ from iip.llm.factory import build_provider
 from iip.queue.jobs import CONSUMER_GROUP
 from iip.queue.redis import create_redis
 from iip.queue.streams import StreamQueue
-from iip.worker.consumer import run_consumer
+from iip.worker.consumer import DEFAULT_RECLAIM_INTERVAL_SECONDS, run_consumer
 from iip.worker.jobs import build_handlers
 
 logger = structlog.get_logger(__name__)
@@ -72,11 +72,14 @@ async def run_worker(
         group=CONSUMER_GROUP,
         consumer=consumer_name(),
         block_ms=BLOCK_MS,
+        base_backoff_s=deps.settings.queue_retry_base_seconds,
     )
     handlers = build_handlers(
         deps.sessionmaker, deps.llm, llm_max_retries=deps.settings.llm_max_retries
     )
-    await run_consumer(queue, handlers, stop)
+    # Sweep for abandoned jobs at least as often as the shortest retry wait.
+    reclaim = min(DEFAULT_RECLAIM_INTERVAL_SECONDS, deps.settings.queue_retry_base_seconds)
+    await run_consumer(queue, handlers, stop, reclaim_interval_seconds=reclaim)
 
 
 async def _heartbeat(stop: asyncio.Event, interval: float) -> None:

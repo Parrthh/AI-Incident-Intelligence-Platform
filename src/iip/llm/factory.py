@@ -10,7 +10,7 @@ def build_provider(settings: Settings) -> LLMProvider | None:
     if settings.llm_provider == "none":
         return None
     if settings.llm_provider == "fake":
-        return FakeProvider(model="fake-model")
+        return FakeProvider(model="fake-model", delay_seconds=settings.llm_fake_delay_ms / 1000)
     # "gemini": the settings validator guarantees the key is present.
     if settings.gemini_api_key is None:  # pragma: no cover - guarded by Settings
         raise ValueError("GEMINI_API_KEY is required for the gemini provider")
