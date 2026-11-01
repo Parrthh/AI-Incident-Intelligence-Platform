@@ -17,7 +17,7 @@ from sqlalchemy import and_, any_, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from iip.db.models import Alert, Analysis, Incident, IncidentEvent
+from iip.db.models import Alert, Analysis, Evidence, Incident, IncidentEvent
 
 DEFAULT_PAGE_SIZE = 25
 MAX_PAGE_SIZE = 100
@@ -124,6 +124,19 @@ async def incident_timeline(session: AsyncSession, incident_id: uuid.UUID) -> li
                 select(IncidentEvent)
                 .where(IncidentEvent.incident_id == incident_id)
                 .order_by(IncidentEvent.at, IncidentEvent.created_at)
+            )
+        ).all()
+    )
+
+
+async def incident_evidence(session: AsyncSession, incident_id: uuid.UUID) -> list[Evidence]:
+    """Evidence items, oldest observation first."""
+    return list(
+        (
+            await session.scalars(
+                select(Evidence)
+                .where(Evidence.incident_id == incident_id)
+                .order_by(Evidence.observed_at, Evidence.id)
             )
         ).all()
     )

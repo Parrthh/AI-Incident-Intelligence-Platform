@@ -14,12 +14,15 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 
 from iip import __version__
 from iip.api.deps import SessionDep
+from iip.db.models import Evidence
 from iip.incidents.queries import (
     InvalidCursorError,
     get_incident_detail,
+    incident_evidence,
     incident_timeline,
     list_incidents,
 )
+from iip.web.timeline import build_timeline
 
 
 def prompt_version(prompt_id: str) -> str:
@@ -36,6 +39,9 @@ _env.filters["prompt_version"] = prompt_version  # pyright: ignore[reportUnknown
 templates = Jinja2Templates(env=_env)
 
 router = APIRouter(include_in_schema=False)
+
+# Order of the evidence sections on the incident page, most telling first.
+EVIDENCE_ORDER = ("deploy", "log", "trace", "metric", "alert")
 
 
 def _context(request: Request, **values: Any) -> dict[str, Any]:
@@ -75,7 +81,11 @@ async def incident_page(
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
     incident, alerts, summary = detail
-    timeline = await incident_timeline(session, incident_id)
+    events = await incident_timeline(session, incident_id)
+    evidence = await incident_evidence(session, incident_id)
+    by_kind: dict[str, list[Evidence]] = {}
+    for item in evidence:
+        by_kind.setdefault(item.kind, []).append(item)
     return templates.TemplateResponse(
         request,
         "incident.html",
@@ -85,6 +95,8 @@ async def incident_page(
             incident=incident,
             alerts=alerts,
             summary=summary,
-            timeline=timeline,
+            timeline=build_timeline(events, evidence),
+            evidence_by_kind=[(k, by_kind[k]) for k in EVIDENCE_ORDER if k in by_kind],
+            evidence_count=len(evidence),
         ),
     )

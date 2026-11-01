@@ -56,3 +56,13 @@ SCRAPE_ERRORS = Counter(
     "Failures reading queue or outbox gauges during a scrape.",
     ["source"],
 )
+
+ENRICHMENT_DURATION = Histogram(
+    "iip_enrichment_source_duration_seconds",
+    "Time each evidence source took per incident, by outcome (ok, error).",
+    ["source", "outcome"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 30),
+)
+EVIDENCE_COLLECTED = Counter(
+    "iip_evidence_items_total", "Evidence items returned by each source.", ["source"]
+)

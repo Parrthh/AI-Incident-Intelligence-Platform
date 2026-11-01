@@ -17,7 +17,7 @@ pytestmark = pytest.mark.integration
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Latest migration. Update when adding one (test_schema.py catches model drift).
-HEAD_REVISION = "0005"
+HEAD_REVISION = "0006"
 
 
 def make_settings(**overrides: object) -> Settings:

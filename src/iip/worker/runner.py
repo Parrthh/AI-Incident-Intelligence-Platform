@@ -26,10 +26,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
-from iip.incidents.resolver import DEFAULT_INTERVAL_SECONDS, run_resolver
+from iip.enrichment.factory import build_enricher
+from iip.incidents.sweeper import DEFAULT_INTERVAL_SECONDS, run_sweeper
 from iip.llm.base import LLMProvider
 from iip.llm.factory import build_provider
 from iip.queue.jobs import CONSUMER_GROUP
+from iip.queue.outbox import OutboxRelay
 from iip.queue.redis import create_redis
 from iip.queue.streams import StreamQueue
 from iip.worker.consumer import DEFAULT_RECLAIM_INTERVAL_SECONDS, run_consumer
@@ -79,7 +81,10 @@ async def run_worker(
         batch=max(10, deps.settings.worker_concurrency),
     )
     handlers = build_handlers(
-        deps.sessionmaker, deps.llm, llm_max_retries=deps.settings.llm_max_retries
+        deps.sessionmaker,
+        deps.llm,
+        llm_max_retries=deps.settings.llm_max_retries,
+        enricher=build_enricher(deps.sessionmaker, deps.settings),
     )
     # Sweep for abandoned jobs at least as often as the shortest retry wait.
     reclaim = min(DEFAULT_RECLAIM_INTERVAL_SECONDS, deps.settings.queue_retry_base_seconds)
@@ -91,11 +96,13 @@ async def run_worker(
             reclaim_interval_seconds=reclaim,
             concurrency=deps.settings.worker_concurrency,
         ),
-        # Resolves incidents once their alerts have been quiet long enough (M3).
-        run_resolver(
+        # Resolves quiet incidents and queues evidence collection (M3).
+        run_sweeper(
             deps.sessionmaker,
             stop,
             quiet=timedelta(seconds=deps.settings.incident_quiet_seconds),
+            jobs_stream=deps.settings.jobs_stream,
+            relay=OutboxRelay(deps.sessionmaker, deps.redis),
             interval=min(DEFAULT_INTERVAL_SECONDS, max(1.0, deps.settings.incident_quiet_seconds)),
         ),
     )

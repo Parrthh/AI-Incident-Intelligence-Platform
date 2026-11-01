@@ -65,6 +65,9 @@ SOURCE_ALERTMANAGER = "alertmanager"
 class CorrelationConfig:
     graph: ServiceGraph = EMPTY_GRAPH
     window: timedelta = timedelta(minutes=10)
+    # Evidence collection waits for alerts to stop arriving (see enrichment/).
+    enrich_debounce: timedelta = timedelta(seconds=60)
+    enrich_max_wait: timedelta = timedelta(seconds=180)
 
 
 DEFAULT_CORRELATION = CorrelationConfig()
@@ -208,6 +211,7 @@ async def _correlate(
             severity=alert.severity,
             services=[alert.service] if alert.service else [],
             started_at=alert.starts_at,
+            enrich_after=datetime.now(UTC) + correlation.enrich_debounce,
         )
         session.add(incident)
         await session.flush()  # assigns incident.id
@@ -224,7 +228,7 @@ async def _correlate(
         logger.info("incident_opened", incident_id=str(incident_id), alertname=alert.alertname)
     else:
         incident_id = decision.incident_id
-        await _merge_into(session, incident_id, alert)
+        await _merge_into(session, incident_id, alert, correlation)
         if incident_id not in result.attached_incident_ids:
             result.attached_incident_ids.append(incident_id)
         session.add(
@@ -308,12 +312,24 @@ async def _candidate_incidents(
 
 
 async def _merge_into(
-    session: AsyncSession, incident_id: uuid.UUID, alert: AlertmanagerAlert
+    session: AsyncSession,
+    incident_id: uuid.UUID,
+    alert: AlertmanagerAlert,
+    correlation: CorrelationConfig,
 ) -> None:
-    """Add the alert's service to the incident and raise its severity if needed."""
+    """Add the alert's service to the incident, raise its severity if needed, and
+    push evidence collection back while alerts keep arriving (up to a max wait)."""
     incident = await session.get(Incident, incident_id, with_for_update=True)
     if incident is None:  # pragma: no cover - locked above, can't vanish
         return
+    now = datetime.now(UTC)
+    if incident.enrich_after is None:
+        # Already collected (or never scheduled): collect again with the new alert.
+        incident.enrich_after = now + correlation.enrich_debounce
+    else:
+        incident.enrich_after = min(
+            now + correlation.enrich_debounce, incident.created_at + correlation.enrich_max_wait
+        )
     if alert.service and alert.service not in incident.services:
         incident.services = [*incident.services, alert.service]
     if SEVERITY_RANK.get(alert.severity or "", -1) > SEVERITY_RANK.get(incident.severity or "", -1):
