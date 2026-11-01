@@ -7,13 +7,15 @@ API reference: https://ai.google.dev/api/generate-content
 """
 
 import time
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
 from iip.llm.base import LLMError, LLMResponse
 
 DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+_HTTP_OK = 200
+_HTTP_TOO_MANY_REQUESTS = 429
 
 
 class GeminiProvider:
@@ -67,14 +69,14 @@ class GeminiProvider:
             ) from exc
         latency_ms = round((time.perf_counter() - started) * 1000)
 
-        if response.status_code != httpx.codes.OK:
+        if response.status_code != _HTTP_OK:
             raise _error_from_response(response)
 
         return _parse(response.json(), fallback_model=self.model, latency_ms=latency_ms)
 
     async def list_models(self) -> list[str]:
         response = await self._client.get("/models", params={"pageSize": 200})
-        if response.status_code != httpx.codes.OK:
+        if response.status_code != _HTTP_OK:
             raise _error_from_response(response)
         models: list[dict[str, Any]] = response.json().get("models", [])
         return [
@@ -95,20 +97,22 @@ def _error_from_response(response: httpx.Response) -> LLMError:
         detail = f"{error.get('status', '')}: {error.get('message', '')}".strip(": ")
     except ValueError:
         detail = response.text[:200]
-    retryable = status == httpx.codes.TOO_MANY_REQUESTS or status >= 500
+    retryable = status == _HTTP_TOO_MANY_REQUESTS or status >= 500
     return LLMError(
         f"gemini HTTP {status}: {detail[:300]}", retryable=retryable, status_code=status
     )
 
 
 def _parse(data: dict[str, Any], *, fallback_model: str, latency_ms: int) -> LLMResponse:
-    candidates: list[dict[str, Any]] = data.get("candidates") or []
+    candidates = cast(list[dict[str, Any]], data.get("candidates") or [])
     if not candidates:
-        reason = (data.get("promptFeedback") or {}).get("blockReason", "no candidates")
+        feedback = cast(dict[str, Any], data.get("promptFeedback") or {})
+        reason = str(feedback.get("blockReason", "no candidates"))
         raise LLMError(f"gemini returned no answer ({reason})", retryable=False)
 
     candidate = candidates[0]
-    parts: list[dict[str, Any]] = (candidate.get("content") or {}).get("parts") or []
+    content = cast(dict[str, Any], candidate.get("content") or {})
+    parts = cast(list[dict[str, Any]], content.get("parts") or [])
     # Thinking models can return their reasoning as parts marked "thought"; only
     # the final answer is wanted.
     text = "".join(str(p.get("text", "")) for p in parts if not p.get("thought")).strip()
@@ -116,7 +120,7 @@ def _parse(data: dict[str, Any], *, fallback_model: str, latency_ms: int) -> LLM
         finish = candidate.get("finishReason", "unknown")
         raise LLMError(f"gemini returned empty text (finishReason={finish})", retryable=False)
 
-    usage: dict[str, Any] = data.get("usageMetadata") or {}
+    usage = cast(dict[str, Any], data.get("usageMetadata") or {})
     return LLMResponse(
         text=text,
         model=str(data.get("modelVersion") or fallback_model),

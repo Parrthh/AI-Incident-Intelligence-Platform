@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 from iip.db.models import Alert, Incident
+from iip.llm.base import LLMError
 from iip.llm.gemini import GeminiProvider
 from iip.llm.prompting import load_prompt
 from iip.llm.retry import with_retries
@@ -28,7 +29,7 @@ def _provider() -> GeminiProvider:
     if not key:
         print("::error::GEMINI_API_KEY is not set (add it as a repository secret)")
         raise SystemExit(1)
-    model = os.environ.get("IIP_LLM_MODEL", "gemini-2.5-flash-lite")
+    model = os.environ.get("IIP_LLM_MODEL", "gemini-3.5-flash-lite")
     return GeminiProvider(api_key=key, model=model, timeout_seconds=60)
 
 
@@ -72,6 +73,9 @@ async def summarize() -> None:
             lambda: provider.generate(user_prompt, system=prompt.system),
             max_retries=2,
         )
+    except LLMError as exc:
+        print(f"::error title=summary failed ({provider.model})::{exc}")
+        raise SystemExit(1) from exc
     finally:
         await provider.aclose()
     print(

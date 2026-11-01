@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     # LLM used for incident summaries (ADR-0005). "none" turns summaries off;
     # "fake" returns a canned summary (local development without a key).
     llm_provider: LLMProviderName = "none"
-    llm_model: str = "gemini-2.5-flash-lite"
+    llm_model: str = "gemini-3.5-flash-lite"
     llm_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
     llm_max_retries: int = Field(default=2, ge=0, le=5)
     gemini_api_key: SecretStr | None = Field(

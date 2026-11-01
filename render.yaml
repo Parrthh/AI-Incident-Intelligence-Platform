@@ -43,7 +43,7 @@ services:
       - key: IIP_LLM_PROVIDER
         value: gemini
       - key: IIP_LLM_MODEL
-        value: gemini-2.5-flash-lite
+        value: gemini-3.5-flash-lite
       # Secrets, entered in the Render dashboard (never committed).
       - key: DATABASE_URL  # Neon pooled connection string
         sync: false
