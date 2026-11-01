@@ -15,7 +15,8 @@ Rule for every key below: copy it from the provider straight into Render or GitH
 | Google AI Studio API key created | M0 deploy | done |
 | `GEMINI_API_KEY` GitHub Actions secret | M1 | done |
 | Upstash Redis database created, us-east-1 | M0 deploy | done |
-| Render account + Blueprint connected | M0 deploy | to do (Claude will ask when `render.yaml` is merged) |
+| Render account + Blueprint connected (service `iip-demo`) | M0 deploy | done |
+| Render connector added to Claude (lets Claude read deploy logs) | M0 deploy | done |
 | Branch ruleset on `main` with required checks | after first CI run | to do (Claude will list the check names) |
 | Slack workspace + incoming webhook | M1 (optional) | to do |
 | Allow `pypi.org`, `files.pythonhosted.org`, `registry.npmjs.org` for the Claude session (claude.ai Settings → Capabilities) | now (speeds up development) | requested |
