@@ -49,7 +49,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 | - | Parth is sole commit author, no AI attribution lines | decided | 2026-10-31 |
 | 0001 | Python + FastAPI monolith package, separate API and worker entrypoints | accepted | 2026-11-01 |
 | 0002 | Redis Streams as queue | accepted | 2026-11-01 |
-| 0003 | Evidence IDs and citation validation | planned (M4) | |
+| 0003 | Evidence IDs and citation validation | accepted | 2026-11-01 |
 | 0004 | Free-tier hosted demo (Render + Neon + Upstash); limits recorded | accepted | 2026-11-01 |
 | 0005 | LLM provider interface, Gemini first | accepted | 2026-11-01 |
 | 0006 | pgvector over a dedicated vector DB | planned (M5) | |

@@ -12,8 +12,10 @@ from iip.db.models import Alert, Analysis, Evidence, Incident, IncidentEvent
 from iip.incidents.queries import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
+    AnalysisView,
     InvalidCursorError,
     get_incident_detail,
+    incident_analysis,
     incident_evidence,
     incident_timeline,
     list_incidents,
@@ -140,11 +142,41 @@ class EvidenceOut(BaseModel):
         )
 
 
+class AnalysisOut(BaseModel):
+    status: str
+    in_progress: bool
+    provider: str | None = None
+    model: str | None = None
+    prompt_version: str | None = None
+    latency_ms: int | None = None
+    completed_at: datetime | None = None
+    result: dict[str, Any] | None = None
+
+    @classmethod
+    def from_view(cls, view: AnalysisView) -> "AnalysisOut | None":
+        row = view.latest_done
+        if row is None:
+            if view.latest_failed is not None:
+                return cls(status="failed", in_progress=False)
+            return cls(status="pending", in_progress=True) if view.in_progress else None
+        return cls(
+            status="done",
+            in_progress=view.in_progress,
+            provider=row.provider,
+            model=row.model,
+            prompt_version=row.prompt_version,
+            latency_ms=row.latency_ms,
+            completed_at=row.completed_at,
+            result=row.result,
+        )
+
+
 class IncidentDetailOut(IncidentOut):
     alerts: list[AlertOut]
     timeline: list[TimelineEventOut]
     evidence: list[EvidenceOut]
     enriched_at: datetime | None
+    analysis: AnalysisOut | None
 
 
 class IncidentListOut(BaseModel):
@@ -186,4 +218,5 @@ async def get_incident_endpoint(incident_id: uuid.UUID, session: SessionDep) -> 
         timeline=[TimelineEventOut.from_row(e) for e in timeline],
         evidence=[EvidenceOut.from_row(e) for e in evidence],
         enriched_at=incident.enriched_at,
+        analysis=AnalysisOut.from_view(await incident_analysis(session, incident_id)),
     )

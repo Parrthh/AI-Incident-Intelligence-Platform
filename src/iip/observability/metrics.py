@@ -66,3 +66,9 @@ ENRICHMENT_DURATION = Histogram(
 EVIDENCE_COLLECTED = Counter(
     "iip_evidence_items_total", "Evidence items returned by each source.", ["source"]
 )
+
+ANALYSIS_CITATIONS = Counter(
+    "iip_analysis_citations_total",
+    "Evidence citations in root-cause analyses, valid or invented (hallucinated).",
+    ["outcome"],
+)

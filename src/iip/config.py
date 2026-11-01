@@ -119,6 +119,10 @@ class Settings(BaseSettings):
     evidence_source_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
     # Telemetry backends to collect evidence from. Each is optional: unset means
     # that kind of evidence isn't collected.
+    # Root-cause analysis (M4): how much evidence fits in the prompt, and how long
+    # the model's answer may be.
+    analysis_budget_tokens: int = Field(default=6000, ge=500, le=100_000)
+    analysis_max_output_tokens: int = Field(default=2048, ge=256, le=16_384)
     prometheus_url: str | None = None
     prometheus_query_set: str = "otel-spanmetrics"
     jaeger_url: str | None = None  # Jaeger query API base, e.g. http://jaeger:16686

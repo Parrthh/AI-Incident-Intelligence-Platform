@@ -129,6 +129,33 @@ async def incident_timeline(session: AsyncSession, incident_id: uuid.UUID) -> li
     )
 
 
+@dataclass(frozen=True)
+class AnalysisView:
+    latest_done: Analysis | None
+    in_progress: bool  # a newer analysis is being written (new evidence arrived)
+    latest_failed: Analysis | None  # newest run, if it failed
+
+
+async def incident_analysis(session: AsyncSession, incident_id: uuid.UUID) -> AnalysisView:
+    rows = list(
+        (
+            await session.scalars(
+                select(Analysis)
+                .where(Analysis.incident_id == incident_id, Analysis.kind == "analysis")
+                .order_by(Analysis.created_at.desc())
+                .limit(10)
+            )
+        ).all()
+    )
+    done = next((r for r in rows if r.status == "done"), None)
+    newest = rows[0] if rows else None
+    return AnalysisView(
+        latest_done=done,
+        in_progress=newest is not None and newest.status == "pending",
+        latest_failed=newest if newest is not None and newest.status == "failed" else None,
+    )
+
+
 async def incident_evidence(session: AsyncSession, incident_id: uuid.UUID) -> list[Evidence]:
     """Evidence items, oldest observation first."""
     return list(

@@ -2,4 +2,5 @@
 
 JOB_SUMMARIZE = "summarize"
 JOB_ENRICH = "enrich"
+JOB_ANALYZE = "analyze"
 CONSUMER_GROUP = "workers"
