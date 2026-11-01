@@ -4,9 +4,9 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 ## Current status
 
-- **Active milestone:** M2 Async pipeline
-- **Current step:** M2 PR C (PR A queue #18 and PR B outbox #19 are merged and live)
-- **Next up:** M2 PR C: queue metrics, DLQ inspect and replay CLI, load test
+- **Active milestone:** M3 Correlation and enrichment
+- **Current step:** M3 step 1 (M2 finished with PRs #18, #19, #22, #23, #24)
+- **Next up:** group related alerts (payment and checkout) into one incident
 - **Blockers:** none
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
 - **Live URL:** https://iip-demo.onrender.com (free tier: sleeps after 15 idle minutes, about 1 minute to wake)
@@ -32,7 +32,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 | Setup (owner tasks) | done | 2026-10-31 | 2026-11-01 | Render connected; Render connector added to the Claude session |
 | M0 Foundations | done | 2026-10-31 | 2026-11-01 | |
 | M1 Walking skeleton | done | 2026-11-01 | 2026-11-01 | PRs #11 to #15; chaos run forwards real incidents to the live demo |
-| M2 Async pipeline | in progress | 2026-11-01 | | PRs #18, #19 merged |
+| M2 Async pipeline | done | 2026-11-01 | 2026-11-01 | PRs #18, #19, #22, #23, #24 |
 | M3 Correlation and enrichment | not started | | | |
 | M4 Grounded analysis and evals | not started | | | |
 | M5 Incident memory | not started | | | |
@@ -60,6 +60,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 | Item | Introduced | Plan to fix |
 |---|---|---|
+| No load shedding: past about 125 to 175 alerts/s (runner-dependent) one API process queues requests until clients time out, instead of rejecting quickly with 503 so Alertmanager retries | M2 load test | M6: uvicorn `limit_concurrency` or a rate limit, plus several API processes |
 | No `uv.lock` committed: package registries are blocked in the dev session, so the lockfile can't be generated there. CI resolves fresh on each run. | M0 PR1 | Generate and commit `uv.lock` once registry access is allowed, then switch CI to `uv sync --locked` |
 
 ## Measured metrics
@@ -80,6 +81,14 @@ Only real measurements. Every row needs method, environment and commit.
 | 2026-11-01 | Live demo: Gemini summary call | 820 ms and 825 ms; 280/82 and 282/80 input/output tokens | `summary_done` log fields `latency_ms`, tokens | same | a836dd2 |
 | 2026-11-01 | Live demo: webhook response time | 202 ms first request, then 58, 38 and 40 ms | `request` log field `duration_ms` (4 deliveries) | same | a836dd2 |
 | 2026-11-01 | Chaos `payment_failure` with the M2 queue: incidents opened | 2 (payment, plus checkout as a downstream symptom); both summarized and resolved | `chaos/run.py` result | GitHub runner, OTel Demo 3.1.0 | a836dd2 |
+| 2026-11-01 | Load test: highest webhook rate held (0 errors, achieved within 5% of target, p95 under 500 ms) | 125 alerts/s (2 runs), 175 alerts/s (1 run) | `load.yml` workflow, open-loop stages of 30 s; every alert opens an incident and queues a job; stub LLM | GitHub runner, 4 vCPU, 15 GiB; 125/s runs on AMD EPYC 7763, 175/s run on AMD EPYC 9V45; 1 API process, 1 worker (concurrency 4), Postgres 17, Redis 7.4 in Docker on the same machine as the client | 6a01760, 3220b5e, d73a33f |
+| 2026-11-01 | Load test: webhook latency at the highest held rate | p50 23 ms / p95 94 ms and p50 24 ms / p95 107 ms at 125/s; p50 62 ms / p95 227 ms at 175/s | client-side timings in `loadtest/run.py` | same | same |
+| 2026-11-01 | Load test: webhook latency at 100 alerts/s | p95 11 to 21 ms across 3 runs | same | same | same |
+| 2026-11-01 | Load test: one step past the limit | throughput drops below the target, p95 7 to 31 s, client timeouts; no load shedding yet | stage after the last held one, 3 runs | same | same |
+| 2026-11-01 | Load test: alerts lost or summarized twice | 0 lost, 0 duplicates across 51,664 incidents in 3 runs | database check after each run: every load-test incident has exactly one finished summary | same | same |
+| 2026-11-01 | Load test: alert stored to summary done (stub LLM) | p50 0.03 to 0.07 s; p95 1.7 to 18.7 s, driven by the backlog in the overload stage | `incidents.created_at` to `analyses.completed_at` | same | same |
+| 2026-11-01 | Load test: peak CPU at overload | API 129 to 139% (of one core), worker 101 to 103%, Postgres 44 to 72% | `docker stats` sampled every 2 s | same | same |
+| 2026-11-01 | Worker crash test: SIGKILL a worker mid-run with 100 queued jobs | 100/100 summarized, 0 duplicates, 0 pending, 0 dead letters | `tests/integration/test_worker_crash.py` in CI | GitHub runner, real `iip worker` subprocesses, fake LLM 100 ms per call | 85163d9 |
 | 2026-11-01 | Container start to serving (incl. migrations against Neon) | 4 s (migrations 2 s) | App log timestamps `migrations_starting` to `Uvicorn running` | Render free, Neon free (us-east-1) | f2fc9da |
 
 ### Eval history (from M4)
@@ -102,7 +111,10 @@ Done:
 - PR #18 Redis Streams queue with backoff retries and a dead-letter stream (ADR-0002). PR #19 transactional outbox, queue-driven summaries with per-incident claims, BackgroundTasks removed (ADR-0008). CI now annotates failing tests on the PR.
 - Parth added the `IIP_DEMO_WEBHOOK_TOKEN` secret. Chaos run 41316466918 forwarded alerts to the live demo: 2 incidents opened, summarized and resolved there. M1 acceptance met.
 - Note: this run opened a second incident for checkout (a symptom of the payment failure). Earlier runs opened only payment. M3 correlation should group them.
-Next: M2 PR C (queue metrics, DLQ inspect and replay CLI, load test).
+- PR #22 `iip dlq` and `iip queue` commands; a test that SIGKILLs a real worker process mid-run (100/100 recovered, 0 duplicates). PR #23 Prometheus `/metrics` and a provisioned Grafana dashboard. PR #24 load test workflow and concurrent job handling (`IIP_WORKER_CONCURRENCY`, default 4).
+- Load test findings: the webhook held 125 alerts/s on EPYC 7763 runners and 175/s on an EPYC 9V45 runner, with no loss or duplicates. Past that, latency climbs to seconds because nothing sheds load; the API process is CPU-bound (about 1.3 cores). Recorded as tech debt for M6. Runner hardware varies between runs, so every number lists its CPU.
+- M2 acceptance: webhook does no slow work; worker and Redis failures lose nothing (crash test, outbox test with Redis down); retries and DLQ; `/metrics` and dashboard (`docs/images/load-test-grafana.png`); ADR-0002 and ADR-0008. The plan's "stop Redis for 30 s" is covered by the Redis-down-at-ingest test rather than a timed outage.
+Next: M3 (correlation and enrichment).
 - UI pass for non-engineer visitors (Parth: a recruiter or anyone should understand the project): where incidents come from, short definitions, milestone descriptions, summary context. Prompt `summary_v1` (no raw timestamps, no "only affected service" claims, plain-language impact). No eval gate exists yet (M4), so v1 was checked by reading its output on the live demo. Chaos runs now Mon, Wed, Fri.
 
 ### 2026-11-01 (M1)

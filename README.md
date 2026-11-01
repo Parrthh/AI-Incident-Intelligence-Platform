@@ -57,6 +57,12 @@ iip dlq purge --yes          # delete every dead letter
 iip queue prune-consumers    # forget worker names idle for an hour
 ```
 
+### Load test
+
+The [`Load test` workflow](.github/workflows/load.yml) runs the whole stack on a 4 vCPU GitHub runner and posts alerts at rising rates, each one opening an incident and queueing a summary job (with a stub LLM, so it measures this system and not the model). One API process held 125 to 175 alerts per second depending on the runner's CPU, with p95 webhook latency of 94 to 227 ms at that rate. No alert was lost or summarized twice in 51,664 incidents across three runs. Details and methods are in the [progress log](docs/plan/07_PROGRESS_LOG.md#measured-metrics).
+
+![Grafana dashboard during a load test](docs/images/load-test-grafana.png)
+
 For dashboards, add Prometheus and Grafana to the dev stack:
 
 ```bash
