@@ -143,6 +143,8 @@ jobs:
           grep -q '"git_sha":"${{ github.sha }}"' version.json
           curl -fsS http://127.0.0.1:10000/readyz | tee readyz.json; echo
           grep -q '"status":"ready"' readyz.json
+          # Landing page renders (also proves the HTML template is packaged in the image).
+          curl -fsS http://127.0.0.1:10000/ | grep -q "AI Incident Intelligence Platform"
           # Container must not run as root.
           test "$(docker exec iip id -u)" != "0"
       - name: Container logs
