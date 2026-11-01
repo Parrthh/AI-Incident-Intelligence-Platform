@@ -103,6 +103,7 @@ Done:
 - Parth added the `IIP_DEMO_WEBHOOK_TOKEN` secret. Chaos run 41316466918 forwarded alerts to the live demo: 2 incidents opened, summarized and resolved there. M1 acceptance met.
 - Note: this run opened a second incident for checkout (a symptom of the payment failure). Earlier runs opened only payment. M3 correlation should group them.
 Next: M2 PR C (queue metrics, DLQ inspect and replay CLI, load test).
+- UI pass for non-engineer visitors (Parth: a recruiter or anyone should understand the project): where incidents come from, short definitions, milestone descriptions, summary context. Prompt `summary_v1` (no raw timestamps, no "only affected service" claims, plain-language impact). No eval gate exists yet (M4), so v1 was checked by reading its output on the live demo. Chaos runs now Mon, Wed, Fri.
 
 ### 2026-11-01 (M1)
 Milestone / step: M1 steps 1 to 10

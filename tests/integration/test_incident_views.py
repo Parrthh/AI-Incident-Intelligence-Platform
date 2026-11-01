@@ -103,7 +103,7 @@ def test_api_detail_includes_alerts(client: TestClient) -> None:
     assert body["id"] == incident_id
     assert body["alerts"][0]["alertname"] == "HighErrorRate"
     assert body["alerts"][0]["labels"]["service"] == "checkout"
-    assert body["summary"]["prompt_version"] == "summary_v0"
+    assert body["summary"]["prompt_version"] == "summary_v1"
 
 
 def test_api_errors(client: TestClient) -> None:
@@ -128,6 +128,10 @@ def test_ui_list_and_detail_render(client: TestClient) -> None:
     assert "HighErrorRate" in detail.text
     assert "service=checkout" in detail.text
     assert "abc123def456" in detail.text  # build info in footer
+    # Plain-language context for visitors who aren't engineers.
+    assert "Where these come from" in listing.text
+    assert "AI summary" in listing.text
+    assert "from the alerts as they first fired" in detail.text
 
 
 def test_ui_empty_state(client: TestClient) -> None:

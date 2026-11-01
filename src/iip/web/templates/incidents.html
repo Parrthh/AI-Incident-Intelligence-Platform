@@ -14,7 +14,12 @@
   .pager { margin-top: 16px; text-align: right; }
 </style>
 <h1>Incidents</h1>
-<p class="muted">Alerts from Prometheus Alertmanager, with an AI-written summary for each new incident.</p>
+<p class="muted">Each card is one problem the monitoring caught. Under the title is the summary the AI wrote for the engineer on call.</p>
+
+<div class="card explain">
+  <p><strong>Where these come from:</strong> an automated test starts a sample online store, makes its payment service fail on purpose, and lets the store's monitoring send its alerts here. No real company's systems are involved. <a href="/#source">How the test works</a></p>
+  <p>Two incidents usually appear per run, payment and checkout, because checkout depends on payment. Grouping them into one incident is planned next.</p>
+</div>
 
 <div class="filters">
   <a href="/incidents" {% if not status %}class="active"{% endif %}>All</a>
@@ -37,7 +42,7 @@
         <span>started {{ incident.started_at.strftime("%Y-%m-%d %H:%M") }}</span>
       </div>
       {% if summary and summary.status == "done" %}
-      <div class="row-summary">{{ summary.summary | truncate(220) }}</div>
+      <div class="row-summary"><span class="label">AI summary</span> {{ summary.summary | truncate(220) }}</div>
       {% endif %}
     </a>
   </li>
@@ -49,7 +54,7 @@
 {% else %}
 <div class="card empty">
   <p><strong>No incidents yet.</strong></p>
-  <p class="muted">Incidents appear here when Alertmanager sends alerts to <code>POST /v1/webhooks/alertmanager</code>.</p>
+  <p class="muted">Incidents appear here when the next failure test runs. Engineers can also send their own alerts to <code>POST /v1/webhooks/alertmanager</code>.</p>
 </div>
 {% endif %}
 {% endblock %}

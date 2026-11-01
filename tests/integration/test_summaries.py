@@ -100,7 +100,7 @@ async def test_summary_is_written(db: AsyncEngine) -> None:
     assert row.kind == "summary"
     assert row.summary == "Fake summary of the incident."
     assert row.provider == "fake"
-    assert row.prompt_version == "summary_v0"
+    assert row.prompt_version == "summary_v1"
     assert row.attempts == 1
     assert row.completed_at is not None
     assert row.input_tokens is not None
@@ -232,7 +232,7 @@ async def _leave_pending_row(db: AsyncEngine, incident_id: uuid.UUID, *, claimed
                 status="pending",
                 provider="fake",
                 model="fake-model",
-                prompt_version="summary_v0",
+                prompt_version="summary_v1",
                 attempts=0,
                 claimed_by=claimed_by,
                 claimed_at=await session.scalar(select(func.now())),

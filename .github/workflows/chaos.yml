@@ -4,7 +4,7 @@ name: Chaos run
 # service on purpose, and checks that the platform opens, summarizes and resolves
 # an incident. Captured Alertmanager payloads are printed as annotations.
 #
-# Runs on PRs that touch the chaos setup, weekly, and on demand. If the
+# Runs on PRs that touch the chaos setup, three times a week, and on demand. If the
 # IIP_DEMO_WEBHOOK_TOKEN secret is set, alerts are also forwarded to the hosted
 # demo, so its public UI shows real incidents.
 on:
@@ -14,7 +14,8 @@ on:
       - "chaos/**"
       - ".github/workflows/chaos.yml"
   schedule:
-    - cron: "17 6 * * 1"  # Mondays 06:17 UTC
+    # Mon, Wed, Fri 06:17 UTC: keeps fresh incidents on the public demo.
+    - cron: "17 6 * * 1,3,5"
   workflow_dispatch:
 
 permissions:

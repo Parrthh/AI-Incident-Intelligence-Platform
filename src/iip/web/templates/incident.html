@@ -21,12 +21,15 @@
   .alert-body { margin-top: 8px; display: grid; gap: 8px; }
   .alert-body .k { font-size: .8rem; color: var(--muted); }
   .times { font-size: .88rem; }
+  .intro-line { margin: 6px 0 0; font-size: .92rem; }
+  .section-note { margin: -4px 0 10px; font-size: .9rem; }
 </style>
 <p><a href="/incidents">← All incidents</a></p>
 <div class="head">
   <h1>{{ incident.title }}</h1>
   <span class="pill {{ incident.status }}">{{ incident.status }}</span>
 </div>
+<p class="muted intro-line">One problem the monitoring caught: the AI's summary first, then the raw alerts it was written from.</p>
 <div class="meta muted">
   {% if incident.severity %}<span class="pill sev">{{ incident.severity }}</span>{% endif %}
   {% for s in incident.services %}<span class="pill neutral">{{ s }}</span>{% endfor %}
@@ -44,11 +47,12 @@
     <p class="muted">The summary couldn't be generated. The alerts below have the full details.</p>
   {% else %}
     <p>{{ summary.summary }}</p>
-    <p class="muted" style="font-size:.82rem">Written by {{ summary.model }}, prompt version {{ summary.prompt_version | prompt_version }}{% if summary.latency_ms %}, in {{ summary.latency_ms }} ms{% endif %}</p>
+    <p class="muted" style="font-size:.82rem">Written by {{ summary.model }}, prompt version {{ summary.prompt_version | prompt_version }}{% if summary.latency_ms %}, in {{ summary.latency_ms }} ms{% endif %}{% if summary.completed_at %}, at {{ summary.completed_at.strftime("%H:%M:%S") }}{% endif %}, from the alerts as they first fired.{% if incident.status == "resolved" %} The incident has since been resolved.{% endif %}</p>
   {% endif %}
 </div>
 
 <h2>Alerts ({{ alerts | length }})</h2>
+<p class="muted section-note">The messages the monitoring system sent, exactly as received. Labels say where an alert came from; the description says what crossed the line.</p>
 <ul class="alerts card">
   {% for alert in alerts %}
   <li>
