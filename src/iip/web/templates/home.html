@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Incident Intelligence Platform</title>
+<meta name="description" content="An open-source, self-hostable incident copilot: Prometheus alerts in, a plain-language summary for the on-call engineer out.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #eef2f5;
+    --surface: #f8fafb;
+    --ink: #17222d;
+    --ink-soft: #4a5866;
+    --rule: #c9d2da;
+    --firing: #c2412d;
+    --firing-wash: #f6e4e0;
+    --resolved: #1f7a6c;
+    --resolved-wash: #ddefeb;
+    --focus: #2b64c8;
+    --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #121a22;
+      --surface: #19232d;
+      --ink: #e6ecf1;
+      --ink-soft: #a3b1be;
+      --rule: #2e3b48;
+      --firing: #f08a76;
+      --firing-wash: #3a2320;
+      --resolved: #6cc9b8;
+      --resolved-wash: #17332e;
+      --focus: #8ab2ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.6 var(--sans); }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: 4px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+  .mark { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
+  .mark svg { flex: none; }
+  .top nav { display: flex; gap: 22px; font-size: 15px; }
+  .top nav a { text-decoration: none; color: var(--ink-soft); }
+  .top nav a:hover { color: var(--ink); }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 56px; align-items: center; padding: 56px 0 72px; }
+  h1 { font-size: clamp(2.3rem, 4.6vw, 3.6rem); line-height: 1.06; letter-spacing: -0.025em; font-weight: 700; margin: 0 0 22px; max-width: 13ch; }
+  .lede { font-size: 1.12rem; color: var(--ink-soft); margin: 0 0 30px; max-width: 34em; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .btn { display: inline-block; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1.5px solid var(--ink); }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .btn.primary:hover { background: transparent; color: var(--ink); }
+  .btn.secondary:hover { background: var(--ink); color: var(--paper); }
+  .byline { margin-top: 26px; font-size: 14px; color: var(--ink-soft); }
+
+  /* The signature element: an alert turning into a summary */
+  .exhibit { position: relative; margin: 0; }
+  .exhibit-note { font-size: 13px; color: var(--ink-soft); margin: 0 0 10px; }
+  .alert-raw { background: var(--ink); color: #dfe7ee; border-radius: 12px 12px 12px 2px; padding: 20px 22px; font: 13px/1.65 var(--mono); overflow-x: auto; }
+  @media (prefers-color-scheme: dark) { .alert-raw { background: #0c1218; border: 1px solid var(--rule); } }
+  .alert-raw .k { color: #8fa3b5; }
+  .alert-raw .state { display: inline-block; padding: 0 8px; border-radius: 4px; font-weight: 500; }
+  .alert-raw .state.firing { background: var(--firing); color: #fff; }
+  .alert-raw .state.resolved { background: var(--resolved); color: #fff; }
+  .connector { height: 40px; margin-left: 34px; border-left: 2px dashed var(--rule); position: relative; }
+  .connector span { position: absolute; left: 16px; top: 9px; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+  .summary-card { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 2px 12px 12px 12px; padding: 22px 24px; }
+  .summary-card p { margin: 0; font-size: 1.05rem; line-height: 1.55; }
+  .summary-card .meta { margin-top: 14px; font-size: 13px; color: var(--ink-soft); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .connector { animation: draw .6s ease-out .35s both; transform-origin: top; }
+    .summary-card { animation: arrive .5s ease-out .9s both; }
+    @keyframes draw { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+    @keyframes arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  }
+
+  /* Sections */
+  section { padding: 64px 0; border-top: 1px solid var(--rule); }
+  h2 { font-size: 1.6rem; letter-spacing: -0.015em; margin: 0 0 10px; }
+  .intro { color: var(--ink-soft); margin: 0 0 36px; max-width: 40em; }
+
+  /* Pipeline: a real sequence, so it's numbered */
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; counter-reset: step; }
+  .steps li { counter-increment: step; padding: 0 20px 0 0; position: relative; }
+  .steps li::before { content: counter(step); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--ink); font-weight: 600; font-size: 14px; background: var(--paper); position: relative; z-index: 1; }
+  .steps li::after { content: ""; position: absolute; top: 15px; left: 30px; right: 0; border-top: 1.5px solid var(--rule); }
+  .steps li:last-child::after { display: none; }
+  .steps h3 { font-size: 1rem; margin: 14px 0 6px; }
+  .steps p { margin: 0; font-size: 15px; color: var(--ink-soft); }
+
+  /* Live numbers */
+  .numbers { display: flex; flex-wrap: wrap; gap: 16px 56px; margin: 0; }
+  .numbers div { min-width: 120px; }
+  .numbers dt { font-size: 14px; color: var(--ink-soft); }
+  .numbers dd { margin: 2px 0 0; font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; }
+  .numbers-note { margin: 24px 0 0; font-size: 14px; color: var(--ink-soft); }
+
+  /* Engineering notes */
+  .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 56px; margin: 0; }
+  .notes dt { font-weight: 600; }
+  .notes dd { margin: 4px 0 0; color: var(--ink-soft); font-size: 16px; }
+  .notes-more { margin: 32px 0 0; font-size: 15px; }
+
+  /* Roadmap */
+  .roadmap { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .roadmap li { padding: 14px 16px; border-radius: 8px; border: 1px solid var(--rule); font-size: 15px; }
+  .roadmap .name { font-weight: 600; display: block; }
+  .roadmap .state { font-size: 13px; color: var(--ink-soft); }
+  .roadmap li.done { border-color: var(--resolved); background: var(--resolved-wash); }
+  .roadmap li.done .state { color: var(--resolved); }
+  .roadmap li.active { border: 1.5px solid var(--ink); background: var(--surface); }
+
+  footer { border-top: 1px solid var(--rule); padding: 28px 0 40px; font-size: 14px; color: var(--ink-soft); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+  footer code { font-family: var(--mono); font-size: 13px; }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 32px; }
+    .steps { grid-template-columns: 1fr; gap: 22px; }
+    .steps li { padding: 0 0 0 46px; }
+    .steps li::before { position: absolute; left: 0; top: 0; }
+    .steps li::after { display: none; }
+    .steps h3 { margin-top: 3px; }
+    .notes { grid-template-columns: 1fr; }
+    .roadmap { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 480px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 16px; }
+    .top nav { gap: 14px; }
+    .roadmap { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="mark" href="/">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="24" height="24" rx="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 15h4l2-6 4 10 2-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Incident Intelligence
+    </a>
+    <nav aria-label="Main">
+      <a href="/incidents">Incidents</a>
+      <a href="{{ repo_url }}">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1>Alerts in. A clear explanation out.</h1>
+        <p class="lede">An open-source incident copilot you can run yourself. It takes alerts from Prometheus, turns them into incidents, and writes a plain-language summary for whoever is on call. Root-cause analysis that cites its evidence comes next.</p>
+        <div class="actions">
+          <a class="btn primary" href="/incidents">View live incidents</a>
+          <a class="btn secondary" href="{{ repo_url }}">Read the source</a>
+        </div>
+        <p class="byline">A project by <a href="https://github.com/Parrthh">Parth Kharkar</a>. In active development.</p>
+      </div>
+
+      <figure class="exhibit" aria-label="An alert and the summary written for it">
+        <p class="exhibit-note">
+          {% if showcase.live %}Latest incident on this deployment{% else %}Example from a chaos test run, where the payment service was broken on purpose{% endif %}
+        </p>
+        <div class="alert-raw" role="group" aria-label="Alert as received from Alertmanager">
+          <div><span class="k">alertname</span> {{ showcase.alertname }}&nbsp;&nbsp;<span class="state {{ showcase.status }}">{{ showcase.status }}</span></div>
+          {% for k, v in showcase.labels %}<div><span class="k">{{ k }}</span> {{ v }}</div>{% endfor %}
+          {% if showcase.description %}<div><span class="k">description</span> {{ showcase.description }}</div>{% endif %}
+          <div><span class="k">startsAt</span> {{ showcase.starts_at }}</div>
+        </div>
+        <div class="connector" aria-hidden="true"><span>{% if showcase.latency %}summarized in {{ showcase.latency }}{% else %}summarized{% endif %}</span></div>
+        <div class="summary-card" role="group" aria-label="Summary written for the on-call engineer">
+          <p>{{ showcase.summary }}</p>
+          <div class="meta"><span>{{ showcase.model }}</span><span>prompt {{ showcase.prompt }}</span>{% if showcase.link %}<a href="{{ showcase.link }}">Open this incident</a>{% endif %}</div>
+        </div>
+      </figure>
+    </div>
+
+    <section aria-labelledby="how">
+      <h2 id="how">What happens when something breaks</h2>
+      <p class="intro">In the latest chaos test, the summary was on screen within seconds of the alert arriving.</p>
+      <ol class="steps">
+        <li><h3>Alert fires</h3><p>A Prometheus rule trips and Alertmanager posts the alert here.</p></li>
+        <li><h3>Stored once</h3><p>Retries and duplicates leave exactly one record, even when ten copies arrive at the same moment.</p></li>
+        <li><h3>Incident opens</h3><p>A new alert opens an incident. When the alert resolves, so does the incident.</p></li>
+        <li><h3>Summary written</h3><p>Secrets are stripped out, then an LLM writes three sentences from the alert data alone.</p></li>
+        <li><h3>Shown on call</h3><p>The incident list updates with the summary and the model and prompt that wrote it.</p></li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="numbers">
+      <h2 id="numbers">This deployment, right now</h2>
+      <p class="intro">Counted live from the database behind this page.</p>
+      <dl class="numbers">
+        <div><dt>Incidents</dt><dd>{{ stats.incidents }}</dd></div>
+        <div><dt>Alerts received</dt><dd>{{ stats.alerts }}</dd></div>
+        <div><dt>Summaries written</dt><dd>{{ stats.summaries }}</dd></div>
+        <div><dt>Median summary time</dt><dd>{{ stats.median }}</dd></div>
+      </dl>
+      <p class="numbers-note">Runs on free hosting, so the first visit after a quiet spell can take about a minute while the server wakes up.</p>
+    </section>
+
+    <section aria-labelledby="eng">
+      <h2 id="eng">How it's built</h2>
+      <p class="intro">Python, FastAPI, Postgres with pgvector, Redis, and Gemini, deployed from GitHub on every merge. A few of the decisions behind it:</p>
+      <dl class="notes">
+        <div><dt>Tested by breaking things</dt><dd>A GitHub Actions job runs the OpenTelemetry Demo, makes its payment service fail, and checks that an incident and summary appear and then resolve.</dd></div>
+        <div><dt>Duplicate-proof ingestion</dt><dd>An atomic upsert keyed on the alert's fingerprint and start time, plus a guard that a late retry can't reopen a resolved alert.</dd></div>
+        <div><dt>No secrets reach the model</dt><dd>Passwords, tokens, API keys and email addresses are redacted from every prompt. Each summary records its model, prompt version and token counts.</dd></div>
+        <div><dt>Every deploy is verified</dt><dd>After a merge, a job waits until this site reports the new commit, then checks that the database and Redis are reachable.</dd></div>
+      </dl>
+      <p class="notes-more"><a href="{{ repo_url }}/tree/main/docs/adr">Design decisions, written up</a></p>
+    </section>
+
+    <section aria-labelledby="roadmap">
+      <h2 id="roadmap">Where it's headed</h2>
+      <p class="intro">Built in milestones, each one deployed before the next starts.</p>
+      <ol class="roadmap">
+        {% for m in milestones %}
+        <li class="{{ m.state }}"><span class="name">{{ m.name }}</span><span class="state">{% if m.state == "done" %}Done{% elif m.state == "active" %}In progress{% else %}Planned{% endif %}</span></li>
+        {% endfor %}
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <span>Open source under Apache-2.0</span>
+    <span>Version {{ version }}, commit <code>{{ commit }}</code></span>
+  </footer>
+</div>
+</body>
+</html>

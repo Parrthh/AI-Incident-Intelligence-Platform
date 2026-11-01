@@ -1,0 +1,41 @@
+{
+  "receiver": "capture",
+  "status": "firing",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "payment",
+        "service_name": "payment",
+        "severity": "critical"
+      },
+      "annotations": {
+        "description": "100% of payment spans ended in error over the last 3 minutes.",
+        "summary": "payment error rate above 20%"
+      },
+      "startsAt": "2026-11-01T05:20:51.51Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://4c0ec3a32c08:9090/graph?g0.expr=%28sum+by+%28service_name%29+%28rate%28traces_span_metrics_calls_total%7Bservice_name%21%3D%22load-generator%22%2Cstatus_code%3D%22STATUS_CODE_ERROR%22%7D%5B3m%5D%29%29+%2F+sum+by+%28service_name%29+%28rate%28traces_span_metrics_calls_total%7Bservice_name%21%3D%22load-generator%22%7D%5B3m%5D%29%29%29+%3E+0.2+and+sum+by+%28service_name%29+%28rate%28traces_span_metrics_calls_total%7Bservice_name%21%3D%22load-generator%22%7D%5B3m%5D%29%29+%3E+0.05&g0.tab=1",
+      "fingerprint": "e70fcf05dd6f912e"
+    }
+  ],
+  "groupLabels": {
+    "alertname": "HighErrorRate",
+    "service": "payment"
+  },
+  "commonLabels": {
+    "alertname": "HighErrorRate",
+    "service": "payment",
+    "service_name": "payment",
+    "severity": "critical"
+  },
+  "commonAnnotations": {
+    "description": "100% of payment spans ended in error over the last 3 minutes.",
+    "summary": "payment error rate above 20%"
+  },
+  "externalURL": "http://9245cf9465dc:9093",
+  "version": "4",
+  "groupKey": "{}/{}:{alertname=\"HighErrorRate\", service=\"payment\"}",
+  "truncatedAlerts": 0
+}
