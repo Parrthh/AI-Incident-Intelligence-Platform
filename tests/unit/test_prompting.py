@@ -29,7 +29,7 @@ def test_summary_prompt_has_system_and_user_sections() -> None:
     prompt = load_prompt(*SUMMARY_PROMPT)
 
     assert prompt.id == "summary_v1"
-    assert "on-call" in prompt.system
+    assert "on call" in prompt.system
     assert "$alerts" in prompt.user.template
 
 
