@@ -57,15 +57,6 @@ SCENARIOS = {
         root_cause_service="payment",
         category="code_bug",
     ),
-    # Every cart call fails. Frontend and checkout both call cart, so this is the
-    # "one failure, alerts on several services" case for correlation.
-    "cart_failure": Scenario(
-        name="cart_failure",
-        flag="cartFailure",
-        on_variant="100%",
-        root_cause_service="cart",
-        category="dependency_failure",
-    ),
     # The payment service is down: no payment spans at all, only its caller fails.
     "payment_unreachable": Scenario(
         name="payment_unreachable",

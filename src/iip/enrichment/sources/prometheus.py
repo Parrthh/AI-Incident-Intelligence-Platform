@@ -36,8 +36,12 @@ QUERY_SETS: dict[str, list[MetricQuery]] = {
         MetricQuery(
             "error_ratio",
             "error ratio",
-            'sum(rate(traces_span_metrics_calls_total{{service_name="{service}",'
-            'status_code="STATUS_CODE_ERROR"}}[2m])) / '
+            # The error series only exists once an error happened, so "or ... * 0"
+            # turns "no errors yet" into 0 instead of no data; otherwise the
+            # baseline would only contain moments with errors.
+            '(sum(rate(traces_span_metrics_calls_total{{service_name="{service}",'
+            'status_code="STATUS_CODE_ERROR"}}[2m])) or '
+            'sum(rate(traces_span_metrics_calls_total{{service_name="{service}"}}[2m])) * 0) / '
             'sum(rate(traces_span_metrics_calls_total{{service_name="{service}"}}[2m]))',
             "ratio",
             0.05,
