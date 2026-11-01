@@ -41,7 +41,7 @@ def test_home_shows_latest_live_incident_and_real_counts(client: TestClient) -> 
     run_summary_jobs(client)
 
     html = client.get("/").text
-    assert "Latest incident on this deployment" in html
+    assert "Latest incident on this site" in html
     assert "Fake summary of the incident." in html
     assert f'href="/incidents/{incident_id}"' in html
     assert "<dd>1</dd>" in html  # one incident, one alert, one summary

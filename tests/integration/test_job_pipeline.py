@@ -198,7 +198,7 @@ async def test_worker_dying_mid_job_is_recovered(
                 status="pending",
                 provider="fake",
                 model="fake-model",
-                prompt_version="summary_v0",
+                prompt_version="summary_v1",
                 attempts=0,
                 claimed_by=message.id,
                 claimed_at=await session.scalar(select(func.now())),
