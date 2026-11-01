@@ -258,6 +258,7 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     t_summarized = time.monotonic()
 
     evidence = check_evidence(target_id, target)
+    analysis = check_analysis(target_id, scenario)
 
     set_flag(demo_dir, scenario.flag, "off")
     t_off = time.monotonic()
@@ -291,6 +292,7 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
         ],
         "summary_text": (summarized.get("summary") or {}).get("text"),
         "evidence": evidence,
+        "analysis": analysis,
     }
 
 
@@ -361,6 +363,45 @@ def check_evidence(incident_id: str, service: str) -> dict[str, Any]:
     }
 
 
+def check_analysis(incident_id: str, scenario: Scenario) -> dict[str, Any]:
+    """Wait for the root-cause analysis and compare it with the known cause."""
+
+    def analyzed() -> dict[str, Any] | None:
+        inc = get_json(f"{IIP}/v1/incidents/{incident_id}")
+        analysis = inc.get("analysis") or {}
+        if analysis.get("status") == "done" and not analysis.get("in_progress"):
+            return analysis
+        if analysis.get("status") == "failed":
+            return analysis
+        return None
+
+    analysis = wait_for("the root-cause analysis", analyzed, 300, 5)
+    if analysis.get("status") != "done":
+        return {"status": "failed"}
+    result = analysis["result"]
+    hypotheses = result.get("hypotheses", [])
+    services = [h["root_cause_service"] for h in hypotheses]
+    pairs = [(h["root_cause_service"], h["category"]) for h in hypotheses]
+    truth = (scenario.root_cause_service, scenario.category)
+    for h in hypotheses:
+        log(
+            f"  #{h['rank']} {h['root_cause_service']} / {h['category']} ({h['confidence']}): "
+            f"{h['explanation']} {h['evidence_ids']}"
+        )
+    return {
+        "status": "done",
+        "model": analysis.get("model"),
+        "latency_ms": analysis.get("latency_ms"),
+        "top": pairs[0] if pairs else None,
+        "truth": truth,
+        "service_top1": bool(services) and services[0] == scenario.root_cause_service,
+        "top1": bool(pairs) and pairs[0] == truth,
+        "top3": truth in pairs[:3],
+        "citations": result.get("citations"),
+        "summary": result.get("summary"),
+    }
+
+
 def post_json(url: str, body: dict[str, Any], token: str) -> Any:
     request = urllib.request.Request(  # noqa: S310 - fixed local URL
         url,
@@ -389,10 +430,13 @@ def report(result: dict[str, Any], run_dir: Path) -> None:
     annotate(
         "notice",
         "chaos result",
-        json.dumps({k: v for k, v in result.items() if k not in {"summary_text", "evidence"}}),
+        json.dumps(
+            {k: v for k, v in result.items() if k not in {"summary_text", "evidence", "analysis"}}
+        ),
     )
     if result.get("summary_text"):
         annotate("notice", "summary text", result["summary_text"])
+    annotate("notice", "analysis", json.dumps(result.get("analysis") or {}))
     evidence = result.get("evidence") or {}
     annotate("notice", "evidence", json.dumps(evidence))
     missing = {"metric", "log", "trace"} - set(evidence.get("evidence_by_kind", {}))
