@@ -1,0 +1,14 @@
+# Overrides for the load test: a webhook token, the fake LLM (no model latency,
+# no API cost), and JSON logs at WARNING so logging doesn't dominate the numbers.
+services:
+  api:
+    environment:
+      IIP_WEBHOOK_TOKEN: load-test-token
+      IIP_LLM_PROVIDER: fake
+      IIP_LOG_LEVEL: WARNING
+      IIP_LOG_JSON: "true"
+  worker:
+    environment:
+      IIP_LLM_PROVIDER: fake
+      IIP_LOG_LEVEL: WARNING
+      IIP_LOG_JSON: "true"

@@ -34,12 +34,12 @@ MILESTONES: list[tuple[str, str, str]] = [
     ),
     (
         "Reliable pipeline",
-        "active",
+        "done",
         "A job queue, so no summary is lost when a server restarts or a service is down.",
     ),
     (
         "Grouping and evidence",
-        "planned",
+        "active",
         "Group related alerts into one incident and gather logs, traces and recent deploys.",
     ),
     (

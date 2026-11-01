@@ -105,6 +105,9 @@ class Settings(BaseSettings):
     # First retry wait for a failed or abandoned job; doubles per attempt, capped
     # at 10 minutes. Must exceed the slowest job run (ADR-0002). Tests shrink it.
     queue_retry_base_seconds: float = Field(default=120.0, gt=0, le=600)
+    # Jobs one worker runs at the same time. Jobs mostly wait on the LLM, so a few
+    # in parallel raise throughput; keep it within the LLM provider's rate limit.
+    worker_concurrency: int = Field(default=4, ge=1, le=100)
 
     # /metrics (Prometheus). If a token is set, scrapes must send it as a Bearer
     # token; unset means open, which is fine on a private network.

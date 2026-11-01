@@ -74,13 +74,20 @@ async def run_worker(
         consumer=consumer_name(),
         block_ms=BLOCK_MS,
         base_backoff_s=deps.settings.queue_retry_base_seconds,
+        batch=max(10, deps.settings.worker_concurrency),
     )
     handlers = build_handlers(
         deps.sessionmaker, deps.llm, llm_max_retries=deps.settings.llm_max_retries
     )
     # Sweep for abandoned jobs at least as often as the shortest retry wait.
     reclaim = min(DEFAULT_RECLAIM_INTERVAL_SECONDS, deps.settings.queue_retry_base_seconds)
-    await run_consumer(queue, handlers, stop, reclaim_interval_seconds=reclaim)
+    await run_consumer(
+        queue,
+        handlers,
+        stop,
+        reclaim_interval_seconds=reclaim,
+        concurrency=deps.settings.worker_concurrency,
+    )
 
 
 async def _heartbeat(stop: asyncio.Event, interval: float) -> None:
