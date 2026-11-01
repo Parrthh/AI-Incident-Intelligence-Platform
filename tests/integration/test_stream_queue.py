@@ -251,3 +251,31 @@ async def test_consumer_loop_retries_until_handler_succeeds(
     assert attempts == [1, 2, 3]
     assert await queue.pending_count() == 0
     assert await dlq_entries(redis, stream) == []
+
+
+async def test_consumer_runs_jobs_side_by_side(redis: Redis, stream: str, cleanup: None) -> None:
+    queue = make_queue(redis, stream, block_ms=5000)
+    done = asyncio.Event()
+    finished: list[int] = []
+
+    async def slow(message: Message) -> None:
+        await asyncio.sleep(0.3)
+        finished.append(int(message.payload["n"]))
+        if len(finished) == 5:
+            done.set()
+
+    for n in range(5):
+        await publish(redis, stream, "summarize", {"n": n})
+    stop = asyncio.Event()
+    started = asyncio.get_running_loop().time()
+    task = asyncio.create_task(
+        run_consumer(queue, {"summarize": slow}, stop, reclaim_interval_seconds=60, concurrency=5)
+    )
+    await asyncio.wait_for(done.wait(), timeout=5)
+    elapsed = asyncio.get_running_loop().time() - started
+    stop.set()
+    await asyncio.wait_for(task, timeout=1)
+
+    assert sorted(finished) == [0, 1, 2, 3, 4]
+    assert elapsed < 1.0  # five 0.3 s jobs in parallel, not 1.5 s in a row
+    assert await queue.pending_count() == 0

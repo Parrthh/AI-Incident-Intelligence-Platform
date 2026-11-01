@@ -1,0 +1,138 @@
+name: Load test
+
+# Runs the full stack (API, worker, Postgres, Redis, Prometheus, Grafana) on a
+# GitHub runner, posts alerts at rising rates, and reports the highest rate the
+# webhook sustains, the backlog drain, and whether any job was lost or doubled.
+# Results are printed as annotations and uploaded with a Grafana screenshot.
+on:
+  workflow_dispatch:
+    inputs:
+      stages:
+        description: "Alerts per second for each stage, comma-separated"
+        default: "10,25,50,100,200,400"
+      seconds:
+        description: "Seconds per stage"
+        default: "30"
+  pull_request:
+    paths:
+      - "loadtest/**"
+      - "deploy/loadtest/**"
+      - "deploy/observability/**"
+      - "deploy/compose/docker-compose.observability.yml"
+      - ".github/workflows/load.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMPOSE: >-
+    docker compose -f deploy/compose/docker-compose.dev.yml
+    -f deploy/compose/docker-compose.observability.yml
+    -f deploy/loadtest/compose.loadtest.yml
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - run: uv sync
+
+      - name: Record the machine
+        run: |
+          {
+            echo "cpus=$(nproc)"
+            echo "cpu_model=$(lscpu | sed -n 's/^Model name: *//p' | head -1)"
+            echo "memory=$(free -h | awk '/Mem:/ {print $2}')"
+          } | tee machine.txt
+          echo "::notice title=machine::$(tr '\n' ' ' < machine.txt)"
+
+      - name: Start the stack
+        run: |
+          $COMPOSE up -d --build
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8000/readyz && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/readyz
+
+      - name: Check Prometheus scrapes the API and worker
+        run: |
+          for i in $(seq 1 30); do
+            up=$(curl -fsS http://127.0.0.1:9090/api/v1/targets | python3 -c "import json,sys; t=json.load(sys.stdin)['data']['activeTargets']; print(sum(x['health']=='up' for x in t))")
+            [ "$up" = "2" ] && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:9090/api/v1/targets | python3 -c "
+          import json,sys
+          for t in json.load(sys.stdin)['data']['activeTargets']:
+              print(t['labels']['job'], t['health'], t.get('lastError',''))
+              assert t['health'] == 'up', t"
+
+      - name: Run the load test
+        run: |
+          uv run python loadtest/run.py \
+            --token load-test-token \
+            --database-url postgresql://iip:iip-dev-only@127.0.0.1:5432/iip \
+            --stages "${{ inputs.stages || '10,25,50,100,200,400' }}" \
+            --seconds "${{ inputs.seconds || '30' }}" \
+            --out loadtest-result.json
+
+      - name: Report
+        if: always()
+        run: |
+          [ -f loadtest-result.json ] || exit 0
+          python3 - <<'PY'
+          import json
+          r = json.load(open("loadtest-result.json"))
+          print(f"::notice title=load test result::{json.dumps({k: r[k] for k in ('max_sustained_rps', 'at_max', 'pipeline')})}")
+          for s in r["stages"]:
+              print(f"::notice title=stage {s['target_rps']}/s::{json.dumps(s)}")
+          with open(__import__('os').environ["GITHUB_STEP_SUMMARY"], "a") as out:
+              out.write("| target/s | achieved/s | errors | p50 ms | p95 ms | p99 ms | holds |\n|---|---|---|---|---|---|---|\n")
+              for s in r["stages"]:
+                  out.write(f"| {s['target_rps']} | {s['achieved_rps']} | {s['errors']} | {s['p50_ms']} | {s['p95_ms']} | {s['p99_ms']} | {s['holds']} |\n")
+              out.write(f"\nPipeline: `{json.dumps(r['pipeline'])}`\n")
+          PY
+
+      - name: Screenshot the Grafana dashboard
+        if: always()
+        run: |
+          npx -y playwright@1.55.0 install --with-deps chromium >/dev/null
+          cat > shot.mjs <<'JS'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch();
+          const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
+          await page.goto('http://127.0.0.1:3000/d/iip-pipeline?orgId=1&from=now-30m&to=now&kiosk', { waitUntil: 'networkidle' });
+          await page.waitForTimeout(5000);
+          await page.screenshot({ path: 'grafana-dashboard.png', fullPage: true });
+          await browser.close();
+          JS
+          npm init -y >/dev/null && npm i playwright@1.55.0 >/dev/null && node shot.mjs
+
+      - name: Collect logs
+        if: always()
+        run: $COMPOSE logs --no-color > compose-logs.txt 2>&1 || true
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: load-test
+          path: |
+            loadtest-result.json
+            grafana-dashboard.png
+            machine.txt
+            compose-logs.txt
+          retention-days: 30
+
+      - name: Stop the stack
+        if: always()
+        run: $COMPOSE down --volumes || true

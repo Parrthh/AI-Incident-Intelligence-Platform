@@ -68,7 +68,7 @@ select = [
 
 # ---------- pyright ----------
 [tool.pyright]
-include = ["src", "tests", "scripts"]
+include = ["src", "tests", "scripts", "loadtest"]
 pythonVersion = "3.12"
 typeCheckingMode = "standard"
 strict = ["src"]
