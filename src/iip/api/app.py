@@ -22,11 +22,12 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from iip import __version__
 from iip.api.health import ReadinessChecks
 from iip.api.middleware import RequestContextMiddleware
-from iip.api.routes import home, system, webhooks
+from iip.api.routes import home, incidents, system, webhooks
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
 from iip.llm.factory import build_provider
 from iip.queue.redis import create_redis
+from iip.web import pages
 from iip.worker.runner import run_worker
 
 logger = structlog.get_logger(__name__)
@@ -124,4 +125,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(system.router)
     app.include_router(home.router)
     app.include_router(webhooks.router)
+    app.include_router(incidents.router)
+    app.include_router(pages.router)
     return app

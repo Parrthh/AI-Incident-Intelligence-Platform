@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Incidents{% endblock %}
+{% block content %}
+<style>
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { border-bottom: 1px solid var(--line); }
+  .list li:last-child { border-bottom: 0; }
+  .list a.row { display: block; padding: 14px 18px; color: inherit; text-decoration: none; }
+  .list a.row:hover { background: var(--bg); }
+  .row-top { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; }
+  .row-title { font-weight: 600; }
+  .row-meta { margin-top: 4px; font-size: .88rem; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row-summary { margin-top: 6px; font-size: .9rem; color: var(--muted); }
+  .pager { margin-top: 16px; text-align: right; }
+</style>
+<h1>Incidents</h1>
+<p class="muted">Alerts from Prometheus Alertmanager, with an AI-written summary for each new incident.</p>
+
+<div class="filters">
+  <a href="/incidents" {% if not status %}class="active"{% endif %}>All</a>
+  <a href="/incidents?status=open" {% if status == "open" %}class="active"{% endif %}>Open</a>
+  <a href="/incidents?status=resolved" {% if status == "resolved" %}class="active"{% endif %}>Resolved</a>
+</div>
+
+{% if items %}
+<ul class="list card">
+  {% for incident, summary in items %}
+  <li>
+    <a class="row" href="/incidents/{{ incident.id }}">
+      <div class="row-top">
+        <span class="row-title">{{ incident.title }}</span>
+        <span class="pill {{ incident.status }}">{{ incident.status }}</span>
+      </div>
+      <div class="row-meta muted">
+        {% if incident.severity %}<span class="pill sev">{{ incident.severity }}</span>{% endif %}
+        {% for s in incident.services %}<span class="pill neutral">{{ s }}</span>{% endfor %}
+        <span>started {{ incident.started_at.strftime("%Y-%m-%d %H:%M") }}</span>
+      </div>
+      {% if summary and summary.status == "done" %}
+      <div class="row-summary">{{ summary.summary | truncate(220) }}</div>
+      {% endif %}
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% if next_cursor %}
+<div class="pager"><a href="/incidents?{% if status %}status={{ status }}&amp;{% endif %}cursor={{ next_cursor }}">Older incidents →</a></div>
+{% endif %}
+{% else %}
+<div class="card empty">
+  <p><strong>No incidents yet.</strong></p>
+  <p class="muted">Incidents appear here when Alertmanager sends alerts to <code>POST /v1/webhooks/alertmanager</code>.</p>
+</div>
+{% endif %}
+{% endblock %}
