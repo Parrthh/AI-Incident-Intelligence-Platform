@@ -5,9 +5,9 @@ Claude updates this at the end of every work session, in the same PR as the work
 ## Current status
 
 - **Active milestone:** M0 Foundations
-- **Current step:** M0 steps 1 to 5 + CI (PR `m0/project-skeleton`)
-- **Next up:** M0 step 6 (Docker, Compose, DB/Redis readiness), then steps 8 to 14
-- **Blockers:** none for steps 1 to 8. Step 12 needs Parth to connect Render.
+- **Current step:** M0 step 12: waiting for Parth to connect the Render Blueprint
+- **Next up:** set `DEMO_URL` in the deploy check workflow, confirm the first deploy, then M1
+- **Blockers:** M0 step 12 needs Parth (Render Blueprint, see setup guide section 6).
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
 - **Live URL:** (after M0 step 12)
 
@@ -15,6 +15,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 - Neon: which Postgres major version does the project show? (Local Docker assumes 17 until confirmed.)
 - Can you allow the package registries for this session? (See setup guide status table.)
+- After the first image publish: is the `iip` package on GHCR public? (Repo → Packages → iip → Package settings → visibility.)
 
 ## Environment
 
@@ -46,10 +47,10 @@ Claude updates this at the end of every work session, in the same PR as the work
 | - | Claude develops autonomously; Parth owns and reviews | decided | 2026-10-31 |
 | - | $0 hosted demo on free tiers instead of AWS | decided | 2026-10-31 |
 | - | Parth is sole commit author, no AI attribution lines | decided | 2026-10-31 |
-| 0001 | Python + FastAPI monolith package | planned (M0) | |
+| 0001 | Python + FastAPI monolith package, separate API and worker entrypoints | accepted | 2026-11-01 |
 | 0002 | Redis Streams as queue | planned (M2) | |
 | 0003 | Evidence IDs and citation validation | planned (M4) | |
-| 0004 | Free-tier hosted demo, API+worker in one process for demo only | planned (M0) | |
+| 0004 | Free-tier hosted demo (Render + Neon + Upstash); limits recorded | accepted | 2026-11-01 |
 | 0005 | LLM provider interface (Gemini, Anthropic, Ollama) | planned (M1) | |
 | 0006 | pgvector over a dedicated vector DB | planned (M5) | |
 
@@ -80,6 +81,22 @@ Only real measurements. Every row needs method, environment and commit.
 | | | | | | |
 
 ## Session log
+
+### 2026-11-01
+Milestone / step: M0 steps 1 to 11, 13, 14
+Done:
+- PR #1: project skeleton, settings, `/healthz` `/readyz` `/version`, JSON logging with request IDs, ruff/pyright/pytest, CI.
+- PR #3: Postgres and Redis connections, Alembic migrations with an advisory lock, pgvector migration, Dockerfile, dev compose, CI service containers and image build job.
+- This PR: worker heartbeat and `iip worker`, in-API worker for the demo, `render.yaml`, GHCR publish workflow, deploy check workflow, ADR-0001, ADR-0004 with verified free-tier limits, README dev quickstart.
+Decisions:
+- Render health check uses `/healthz`, not `/readyz` (Render restarts on failure). Migrations run at startup. See ADR-0004.
+- Upstash's 500K commands/month limit means M2 consumers must use long blocking reads.
+Metrics captured:
+- None yet (CI duration and deploy time get recorded once the first deploy runs).
+Next:
+- Parth connects Render; then set `DEMO_URL` and verify the deploy check end to end.
+Open questions:
+- See "Open questions for Parth".
 
 ### 2026-10-31
 Milestone / step: setup, M0 kickoff

@@ -34,7 +34,7 @@ migrate: ## Apply database migrations (uses .env)
 
 COMPOSE = docker compose -f deploy/compose/docker-compose.dev.yml
 
-dev: ## Start API + Postgres + Redis in Docker
+dev: ## Start API + worker + Postgres + Redis in Docker
 	$(COMPOSE) up --build -d
 	@echo "API: http://127.0.0.1:8000/readyz   docs: http://127.0.0.1:8000/docs"
 

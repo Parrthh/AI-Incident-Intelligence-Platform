@@ -72,6 +72,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("IIP_REDIS_URL", "REDIS_URL"),
     )
 
+    # Run the worker loop inside the API process. Only for hosts without a
+    # separate background worker (the free Render demo, ADR-0004). Self-hosted
+    # installs run `iip worker` as its own container.
+    run_worker_in_api: bool = False
+
     # Connection pool size per process. Free-tier databases allow few
     # connections, so keep this small.
     db_pool_size: int = Field(default=5, ge=1, le=50)

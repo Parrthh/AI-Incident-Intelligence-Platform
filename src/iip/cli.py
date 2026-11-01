@@ -2,6 +2,7 @@
 
 Commands:
     iip api      run the HTTP API
+    iip worker   run the background worker
     iip migrate  apply database migrations (safe to run from several instances at once)
     iip version  print the installed version
 """
@@ -37,6 +38,18 @@ def _run_api() -> int:
     return 0
 
 
+def _run_worker() -> int:
+    settings = get_settings()
+    configure_logging(level=settings.log_level, json=settings.log_json)
+
+    import asyncio
+
+    from iip.worker.runner import run_worker_until_signalled
+
+    asyncio.run(run_worker_until_signalled())
+    return 0
+
+
 def _run_migrate() -> int:
     settings = get_settings()
     configure_logging(level=settings.log_level, json=settings.log_json)
@@ -56,12 +69,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="iip", description="AI Incident Intelligence Platform")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("api", help="run the HTTP API")
+    sub.add_parser("worker", help="run the background worker")
     sub.add_parser("migrate", help="apply database migrations")
     sub.add_parser("version", help="print the installed version")
 
     args = parser.parse_args(argv)
     if args.command == "api":
         return _run_api()
+    if args.command == "worker":
+        return _run_worker()
     if args.command == "migrate":
         return _run_migrate()
     if args.command == "version":

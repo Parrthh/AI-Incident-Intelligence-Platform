@@ -257,7 +257,7 @@ Internet → Render web service (HTTPS on *.onrender.com, Docker image)
            → Gemini API (free tier)          GEMINI_API_KEY
 ```
 
-- **Deploys:** `render.yaml` (a Render Blueprint) defines the service, its env vars and health check. Render auto-deploys on every merge to `main` that passes CI. Parth connects the Blueprint once; after that every infra change is a PR.
+- **Deploys:** `render.yaml` (a Render Blueprint) defines the service, its env vars and health check. Render auto-deploys every commit on `main` whose checks pass. Parth connects the Blueprint once; after that every infra change is a PR. Migrations run at container start (free instances have no pre-deploy step), protected by an advisory lock. Render's health check uses `/healthz`; the `Deploy check` workflow verifies `/readyz` after each deploy (ADR-0004).
 - **API and worker in one process (demo only).** Render's free tier doesn't include background workers, so with `IIP_RUN_WORKER_IN_API=true` the API process also runs the worker loop as an asyncio task. Self-hosted installs run them as separate containers, which is the design the code is built around. The worker code is identical either way; only the entrypoint differs.
 - **Sleep and cold starts.** Free Render services sleep after a period of inactivity and wake on the next request, which takes some time. Nothing is lost while asleep: accepted alerts are already in Postgres (outbox) and queued messages wait in Redis.
 - **Secrets** live in Render's environment settings (entered by Parth) and GitHub Actions secrets. They never appear in the repo.
