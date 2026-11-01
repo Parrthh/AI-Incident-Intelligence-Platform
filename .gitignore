@@ -1,0 +1,42 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.python-version.local
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Node / web
+node_modules/
+web/dist/
+web/.vite/
+npm-debug.log*
+
+# Evals and chaos run outputs (committed datasets live in evals/datasets/)
+evals/reports/local/
+chaos/runs/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
