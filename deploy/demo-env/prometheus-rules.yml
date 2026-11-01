@@ -1,0 +1,43 @@
+# Alert rules for the OpenTelemetry Demo, mounted into the demo's Prometheus by
+# compose.iip.yaml. They use the demo's span metrics (from the OTel Collector's
+# spanmetrics connector), labeled by service_name. See queries.md.
+groups:
+  - name: iip-demo
+    # Evaluate faster than the 1m default so chaos runs finish sooner.
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        # Share of spans with error status, per service, over 3 minutes. The second
+        # condition ignores services with almost no traffic, where one failed call
+        # would be "100% errors".
+        expr: |
+          (
+            sum by (service_name) (rate(traces_span_metrics_calls_total{status_code="STATUS_CODE_ERROR"}[3m]))
+            /
+            sum by (service_name) (rate(traces_span_metrics_calls_total[3m]))
+          ) > 0.05
+          and
+          sum by (service_name) (rate(traces_span_metrics_calls_total[3m])) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+          service: "{{ $labels.service_name }}"
+        annotations:
+          summary: "{{ $labels.service_name }} error rate above 5%"
+          description: "{{ $value | humanizePercentage }} of {{ $labels.service_name }} spans ended in error over the last 3 minutes."
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, service_name) (rate(traces_span_metrics_duration_milliseconds_bucket[3m]))
+          ) > 1500
+          and
+          sum by (service_name) (rate(traces_span_metrics_calls_total[3m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          service: "{{ $labels.service_name }}"
+        annotations:
+          summary: "{{ $labels.service_name }} p95 latency above 1.5s"
+          description: "p95 span duration for {{ $labels.service_name }} is {{ $value | humanize }} ms over the last 3 minutes."

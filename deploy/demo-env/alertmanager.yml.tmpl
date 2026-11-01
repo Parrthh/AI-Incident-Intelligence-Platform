@@ -1,0 +1,30 @@
+# Alertmanager config for chaos runs. Rendered by chaos/run.py, which fills in
+# the demo webhook block only when IIP_DEMO_WEBHOOK_TOKEN is set.
+route:
+  receiver: iip-local
+  group_by: [alertname, service]
+  group_wait: 20s
+  group_interval: 1m
+  repeat_interval: 1h
+  routes:
+    # Every alert goes to each receiver below (continue: true).
+    - receiver: capture
+      continue: true
+    - receiver: iip-local
+      continue: true
+__DEMO_ROUTE__
+
+receivers:
+  - name: capture
+    webhook_configs:
+      - url: http://iip-capture:8080/
+        send_resolved: true
+  - name: iip-local
+    webhook_configs:
+      - url: http://iip:8000/v1/webhooks/alertmanager
+        send_resolved: true
+        http_config:
+          authorization:
+            type: Bearer
+            credentials: chaos-local-token
+__DEMO_RECEIVER__

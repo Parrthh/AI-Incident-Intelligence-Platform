@@ -1,0 +1,66 @@
+# Added on top of the OpenTelemetry Demo's compose files for chaos runs:
+#   docker compose -f compose.yaml -f compose.observability.yaml -f <this file>
+# Relative paths resolve against the demo directory, so files from this repo are
+# referenced through IIP_REPO and IIP_RUN_DIR (set by chaos/run.py).
+services:
+  prometheus:
+    volumes:
+      - ${IIP_REPO}/deploy/demo-env/prometheus-rules.yml:/etc/prometheus/iip-rules.yml:ro
+
+  alertmanager:
+    image: quay.io/prometheus/alertmanager:v0.28.1
+    container_name: alertmanager
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes:
+      - ${IIP_RUN_DIR}/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+
+  iip-capture:
+    image: python:3.12-slim
+    container_name: iip-capture
+    command: ["python", "/app/capture_server.py"]
+    volumes:
+      - ${IIP_REPO}/deploy/demo-env/capture_server.py:/app/capture_server.py:ro
+      - ${IIP_RUN_DIR}/captures:/captures
+
+  iip-postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: iip
+      POSTGRES_PASSWORD: iip-chaos-only
+      POSTGRES_DB: iip
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iip -d iip"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  iip-redis:
+    image: redis:7.4-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  iip:
+    image: ${IIP_IMAGE}
+    container_name: iip
+    command: ["iip", "api", "--migrate"]
+    environment:
+      IIP_ENV: production
+      DATABASE_URL: postgresql://iip:iip-chaos-only@iip-postgres:5432/iip
+      REDIS_URL: redis://iip-redis:6379/0
+      IIP_WEBHOOK_TOKEN: chaos-local-token
+      IIP_RUN_WORKER_IN_API: "true"
+      IIP_LLM_PROVIDER: ${IIP_LLM_PROVIDER:-fake}
+      IIP_LLM_MODEL: ${IIP_LLM_MODEL:-gemini-3.5-flash-lite}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      iip-postgres:
+        condition: service_healthy
+      iip-redis:
+        condition: service_healthy
