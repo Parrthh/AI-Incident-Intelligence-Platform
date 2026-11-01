@@ -5,16 +5,16 @@ Claude updates this at the end of every work session, in the same PR as the work
 ## Current status
 
 - **Active milestone:** M0 Foundations
-- **Current step:** M0 step 1 (project skeleton)
-- **Next up:** M0 steps 1 to 8 (skeleton, config, health checks, logging, quality gates, Docker, CI, GHCR)
+- **Current step:** M0 steps 1 to 5 + CI (PR `m0/project-skeleton`)
+- **Next up:** M0 step 6 (Docker, Compose, DB/Redis readiness), then steps 8 to 14
 - **Blockers:** none for steps 1 to 8. Step 12 needs Parth to connect Render.
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
 - **Live URL:** (after M0 step 12)
 
 ## Open questions for Parth
 
-- Neon: which region and Postgres version did the project get? (Local Docker should match.)
-- Google AI Studio key: created yet?
+- Neon: which Postgres major version does the project show? (Local Docker assumes 17 until confirmed.)
+- Can you allow the package registries for this session? (See setup guide status table.)
 
 ## Environment
 
@@ -28,7 +28,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 | Milestone | Status | Started | Finished | Notes |
 |---|---|---|---|---|
-| Setup (owner tasks) | in progress | 2026-10-31 | | Repo, Neon done; Upstash, Render, secrets pending |
+| Setup (owner tasks) | in progress | 2026-10-31 | | All done except Render (waits for `render.yaml`) |
 | M0 Foundations | in progress | 2026-10-31 | | |
 | M1 Walking skeleton | not started | | | |
 | M2 Async pipeline | not started | | | |
@@ -57,7 +57,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 | Item | Introduced | Plan to fix |
 |---|---|---|
-| | | |
+| No `uv.lock` committed: package registries are blocked in the dev session, so the lockfile can't be generated there. CI resolves fresh on each run. | M0 PR1 | Generate and commit `uv.lock` once registry access is allowed, then switch CI to `uv sync --locked` |
 
 ## Measured metrics
 

@@ -10,14 +10,15 @@ Rule for every key below: copy it from the provider straight into Render or GitH
 |---|---|---|
 | GitHub repo created and connected to the Claude session | M0 | done |
 | GitHub private noreply email set for commits | M0 | done |
-| Repo settings (squash only, delete branches, security features) | M0 | check (see 1) |
-| Neon project created (pooled connection string saved) | M0 deploy | done, per Parth (confirm region and Postgres version) |
-| Google AI Studio API key created | M0 deploy | to confirm |
-| `GEMINI_API_KEY` GitHub Actions secret | M1 | to do |
-| Upstash Redis database created | M0 deploy | to do |
+| Repo settings (squash only, delete branches, security features) | M0 | done |
+| Neon project created (pooled connection string saved), us-east-1 | M0 deploy | done (Postgres version to confirm) |
+| Google AI Studio API key created | M0 deploy | done |
+| `GEMINI_API_KEY` GitHub Actions secret | M1 | done |
+| Upstash Redis database created, us-east-1 | M0 deploy | done |
 | Render account + Blueprint connected | M0 deploy | to do (Claude will ask when `render.yaml` is merged) |
 | Branch ruleset on `main` with required checks | after first CI run | to do (Claude will list the check names) |
 | Slack workspace + incoming webhook | M1 (optional) | to do |
+| Allow `pypi.org`, `files.pythonhosted.org`, `registry.npmjs.org` for the Claude session (claude.ai Settings → Capabilities) | now (speeds up development) | requested |
 | Reddit / Hacker News accounts in good standing | M7 | to do |
 
 ## 1. GitHub repository settings
