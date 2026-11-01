@@ -1,0 +1,15 @@
+# Service dependencies of the OpenTelemetry Demo 3.x (who calls whom), from its
+# architecture docs: https://opentelemetry.io/docs/demo/architecture/
+# Used to group alerts on connected services into one incident. Names match the
+# `service_name` the demo puts on its spans, which is what alerts carry.
+calls:
+  frontend-proxy: [frontend, image-provider, flagd]
+  frontend: [ad, cart, checkout, currency, product-catalog, recommendation, shipping, product-reviews]
+  checkout: [cart, currency, email, payment, product-catalog, shipping, kafka]
+  shipping: [quote]
+  recommendation: [product-catalog]
+  product-reviews: [product-catalog, llm]
+  accounting: [kafka]
+  fraud-detection: [kafka]
+  cart: [valkey-cart]
+  load-generator: [frontend-proxy]

@@ -15,6 +15,7 @@ from iip.config import Environment, Settings
 from iip.db.engine import create_engine
 from iip.db.models import Alert, Incident
 from tests.fixtures.loader import load_alertmanager
+from tests.integration.helpers import resolve_quiet_incidents_now
 
 pytestmark = pytest.mark.integration
 
@@ -96,14 +97,18 @@ async def test_redelivery_is_idempotent(client: TestClient, db: AsyncEngine) -> 
     assert await count(db, Incident) == 1
 
 
-async def test_resolved_alert_updates_row_and_resolves_incident(
+async def test_resolved_alert_updates_row_and_resolves_incident_after_quiet_period(
     client: TestClient, db: AsyncEngine
 ) -> None:
     opened = post(client, load_alertmanager("high_error_rate_firing")).json()
     resolved = post(client, load_alertmanager("high_error_rate_resolved")).json()
 
     assert resolved["new_alerts"] == 0
-    assert resolved["resolved_incident_ids"] == opened["new_incident_ids"]
+    async with db.connect() as conn:
+        incident = (await conn.execute(select(Incident))).one()
+    assert incident.status == "open"  # waits for the quiet period
+
+    assert [str(i) for i in resolve_quiet_incidents_now(client)] == opened["new_incident_ids"]
     async with db.connect() as conn:
         alert = (await conn.execute(select(Alert))).one()
         incident = (await conn.execute(select(Incident))).one()
@@ -119,6 +124,7 @@ async def test_late_firing_retry_does_not_reopen_resolved_alert(
 ) -> None:
     post(client, load_alertmanager("high_error_rate_firing"))
     post(client, load_alertmanager("high_error_rate_resolved"))
+    resolve_quiet_incidents_now(client)
     # A delayed retry of the original "firing" delivery arrives last.
     late = post(client, load_alertmanager("high_error_rate_firing")).json()
 
@@ -131,19 +137,36 @@ async def test_late_firing_retry_does_not_reopen_resolved_alert(
     assert incident.status == "resolved"
 
 
-async def test_refiring_with_new_start_time_is_a_new_occurrence(
+async def test_refiring_during_quiet_period_rejoins_the_incident(
     client: TestClient, db: AsyncEngine
 ) -> None:
     post(client, load_alertmanager("high_error_rate_firing"))
     post(client, load_alertmanager("high_error_rate_resolved"))
     again = load_alertmanager("high_error_rate_firing")
-    again["alerts"][0]["startsAt"] = "2026-11-01T06:00:00Z"
+    again["alerts"][0]["startsAt"] = "2026-11-01T06:00:00Z"  # a flap, hours later
 
     response = post(client, again).json()
 
     assert response["new_alerts"] == 1
-    assert len(response["new_incident_ids"]) == 1
+    assert response["new_incident_ids"] == []  # same alert, incident still open
+    assert len(response["attached_incident_ids"]) == 1
     assert await count(db, Alert) == 2
+    assert await count(db, Incident) == 1
+    assert resolve_quiet_incidents_now(client) == []  # one alert is firing again
+
+
+async def test_refiring_after_resolution_is_a_new_incident(
+    client: TestClient, db: AsyncEngine
+) -> None:
+    post(client, load_alertmanager("high_error_rate_firing"))
+    post(client, load_alertmanager("high_error_rate_resolved"))
+    resolve_quiet_incidents_now(client)
+    again = load_alertmanager("high_error_rate_firing")
+    again["alerts"][0]["startsAt"] = "2026-11-01T06:00:00Z"
+
+    response = post(client, again).json()
+
+    assert len(response["new_incident_ids"]) == 1
     assert await count(db, Incident) == 2
 
 

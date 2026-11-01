@@ -78,7 +78,9 @@ class Stage:
 
 def alert_payload(run_id: str, n: int) -> dict[str, Any]:
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    labels = {"alertname": "LoadTest", "service": f"svc-{n % 20}", "severity": "warning"}
+    # A unique service per alert, so correlation never groups them: every request
+    # opens an incident and queues a job, the most expensive path.
+    labels = {"alertname": "LoadTest", "service": f"svc-{run_id}-{n}", "severity": "warning"}
     alert = {
         "status": "firing",
         "labels": labels,

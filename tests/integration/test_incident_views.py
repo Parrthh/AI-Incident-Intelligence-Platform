@@ -9,7 +9,7 @@ from pydantic import SecretStr
 from iip.api.app import create_app
 from iip.config import Environment, Settings
 from tests.fixtures.loader import load_alertmanager
-from tests.integration.helpers import run_summary_jobs
+from tests.integration.helpers import resolve_quiet_incidents_now, run_summary_jobs
 
 pytestmark = pytest.mark.integration
 
@@ -42,6 +42,7 @@ def alert_at(minute: int, fingerprint: str, title: str = "x") -> dict[str, Any]:
     payload = load_alertmanager("high_error_rate_firing")
     alert = payload["alerts"][0]
     alert["fingerprint"] = fingerprint
+    alert["labels"]["service"] = f"svc-{fingerprint}"  # unrelated services: one incident each
     alert["startsAt"] = f"2026-11-01T04:{minute:02d}:00Z"
     alert["annotations"]["summary"] = title
     return payload
@@ -84,6 +85,7 @@ def test_api_paginates_with_cursor_without_gaps_or_repeats(client: TestClient) -
 def test_api_filters_by_status_and_service(client: TestClient) -> None:
     send(client, load_alertmanager("high_error_rate_firing"))
     send(client, load_alertmanager("high_error_rate_resolved"))
+    resolve_quiet_incidents_now(client)
     send(client, load_alertmanager("two_alerts_firing"))
 
     open_titles = {i["title"] for i in client.get("/v1/incidents?status=open").json()["items"]}

@@ -242,16 +242,24 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     t_resolved = time.monotonic()
 
     final = [i for i in incidents() if i["id"] not in pre_existing]
+    alert_counts = {
+        i["id"]: len(get_json(f"{IIP}/v1/incidents/{i['id']}")["alerts"]) for i in final
+    }
+    total_alerts = sum(alert_counts.values())
     return {
         "scenario": scenario.name,
         "root_cause_service": scenario.root_cause_service,
         "seconds_flag_on_to_incident": round(t_opened - t_on),
         "seconds_incident_to_summary": round(t_summarized - t_opened),
         "seconds_flag_off_to_resolved": round(t_resolved - t_off),
+        # Noise reduction: how many alerts the on-call engineer sees as one incident.
+        "alerts": total_alerts,
+        "incident_count": len(final),
         "incidents": [
             {
                 "title": i["title"],
                 "services": i["services"],
+                "alerts": alert_counts[i["id"]],
                 "status": i["status"],
                 "summary_status": (i.get("summary") or {}).get("status"),
                 "summary_model": (i.get("summary") or {}).get("model"),

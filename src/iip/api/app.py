@@ -13,6 +13,7 @@ production), that dependency is simply absent.
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
+from datetime import timedelta
 
 import structlog
 from fastapi import FastAPI
@@ -24,7 +25,9 @@ from iip.api.health import ReadinessChecks
 from iip.api.middleware import RequestContextMiddleware
 from iip.api.routes import incidents, metrics, system, webhooks
 from iip.config import Settings, get_settings
+from iip.core.graph import load_graph
 from iip.db.engine import create_engine
+from iip.ingest.service import CorrelationConfig
 from iip.llm.factory import build_provider
 from iip.queue.outbox import OutboxRelay
 from iip.queue.redis import create_redis
@@ -140,6 +143,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         openapi_url=None if settings.is_production else "/openapi.json",
     )
     app.state.settings = settings
+    # Loaded once at startup: a broken graph file fails fast instead of on the
+    # first alert.
+    app.state.correlation = CorrelationConfig(
+        graph=load_graph(settings.service_graph),
+        window=timedelta(seconds=settings.correlation_window_seconds),
+    )
     app.state.readiness = readiness
 
     app.add_middleware(RequestContextMiddleware)

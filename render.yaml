@@ -39,6 +39,9 @@ services:
       # Free databases allow few connections; keep the pool small.
       - key: IIP_DB_POOL_SIZE
         value: "3"
+      # Group alerts on connected services of the OpenTelemetry Demo (ADR-0009).
+      - key: IIP_SERVICE_GRAPH
+        value: builtin:otel-demo
       # Incident summaries via Gemini's free tier (ADR-0005).
       - key: IIP_LLM_PROVIDER
         value: gemini

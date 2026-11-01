@@ -44,7 +44,7 @@ async def alertmanager_webhook(
     request: Request,
 ) -> IngestResponse:
     settings = request.app.state.settings
-    result = await ingest_alertmanager(session, payload)
+    result = await ingest_alertmanager(session, payload, request.app.state.correlation)
     if settings.llm_provider != "none":
         for incident_id in result.new_incident_ids:
             enqueue(session, settings.jobs_stream, JOB_SUMMARIZE, {"incident_id": str(incident_id)})

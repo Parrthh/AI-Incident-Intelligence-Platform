@@ -63,6 +63,7 @@ async def queue_incidents(db: AsyncEngine, redis: Redis, stream: str, count: int
     async with sessionmaker_for(db)() as session:
         for n in range(count):
             template["alerts"][0]["fingerprint"] = f"crash-{n}"
+            template["alerts"][0]["labels"]["service"] = f"svc-{n}"  # one incident each
             result = await ingest_alertmanager(
                 session, AlertmanagerPayload.model_validate(template)
             )

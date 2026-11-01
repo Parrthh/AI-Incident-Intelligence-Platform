@@ -8,12 +8,13 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
 from iip.api.deps import SessionDep
-from iip.db.models import Alert, Analysis, Incident
+from iip.db.models import Alert, Analysis, Incident, IncidentEvent
 from iip.incidents.queries import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
     InvalidCursorError,
     get_incident_detail,
+    incident_timeline,
     list_incidents,
 )
 
@@ -93,8 +94,30 @@ class AlertOut(BaseModel):
         )
 
 
+class TimelineEventOut(BaseModel):
+    at: datetime
+    kind: str
+    reason: str | None
+    alertname: str | None = None
+    service: str | None = None
+    rule: str | None = None
+
+    @classmethod
+    def from_row(cls, row: IncidentEvent) -> "TimelineEventOut":
+        p = row.payload
+        return cls(
+            at=row.at,
+            kind=row.kind,
+            reason=p.get("reason"),
+            alertname=p.get("alertname"),
+            service=p.get("service"),
+            rule=p.get("rule"),
+        )
+
+
 class IncidentDetailOut(IncidentOut):
     alerts: list[AlertOut]
+    timeline: list[TimelineEventOut]
 
 
 class IncidentListOut(BaseModel):
@@ -127,5 +150,10 @@ async def get_incident_endpoint(incident_id: uuid.UUID, session: SessionDep) -> 
     if detail is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
     incident, alerts, summary = detail
+    timeline = await incident_timeline(session, incident_id)
     base = IncidentOut.from_row(incident, summary)
-    return IncidentDetailOut(**base.model_dump(), alerts=[AlertOut.from_row(a) for a in alerts])
+    return IncidentDetailOut(
+        **base.model_dump(),
+        alerts=[AlertOut.from_row(a) for a in alerts],
+        timeline=[TimelineEventOut.from_row(e) for e in timeline],
+    )
