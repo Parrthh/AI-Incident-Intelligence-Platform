@@ -8,12 +8,13 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
 from iip.api.deps import SessionDep
-from iip.db.models import Alert, Analysis, Incident, IncidentEvent
+from iip.db.models import Alert, Analysis, Evidence, Incident, IncidentEvent
 from iip.incidents.queries import (
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
     InvalidCursorError,
     get_incident_detail,
+    incident_evidence,
     incident_timeline,
     list_incidents,
 )
@@ -101,6 +102,7 @@ class TimelineEventOut(BaseModel):
     alertname: str | None = None
     service: str | None = None
     rule: str | None = None
+    source: str | None = None
 
     @classmethod
     def from_row(cls, row: IncidentEvent) -> "TimelineEventOut":
@@ -112,12 +114,35 @@ class TimelineEventOut(BaseModel):
             alertname=p.get("alertname"),
             service=p.get("service"),
             rule=p.get("rule"),
+            source=p.get("source"),
+        )
+
+
+class EvidenceOut(BaseModel):
+    id: str
+    kind: str
+    source: str
+    summary: str
+    observed_at: datetime
+    payload: dict[str, Any]
+
+    @classmethod
+    def from_row(cls, row: Evidence) -> "EvidenceOut":
+        return cls(
+            id=row.id,
+            kind=row.kind,
+            source=row.source,
+            summary=row.summary,
+            observed_at=row.observed_at,
+            payload=row.payload,
         )
 
 
 class IncidentDetailOut(IncidentOut):
     alerts: list[AlertOut]
     timeline: list[TimelineEventOut]
+    evidence: list[EvidenceOut]
+    enriched_at: datetime | None
 
 
 class IncidentListOut(BaseModel):
@@ -151,9 +176,12 @@ async def get_incident_endpoint(incident_id: uuid.UUID, session: SessionDep) -> 
         raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
     incident, alerts, summary = detail
     timeline = await incident_timeline(session, incident_id)
+    evidence = await incident_evidence(session, incident_id)
     base = IncidentOut.from_row(incident, summary)
     return IncidentDetailOut(
         **base.model_dump(),
         alerts=[AlertOut.from_row(a) for a in alerts],
         timeline=[TimelineEventOut.from_row(e) for e in timeline],
+        evidence=[EvidenceOut.from_row(e) for e in evidence],
+        enriched_at=incident.enriched_at,
     )

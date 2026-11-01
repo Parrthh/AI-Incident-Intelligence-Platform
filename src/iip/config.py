@@ -110,6 +110,14 @@ class Settings(BaseSettings):
     # before its server sleeps (15 idle minutes).
     incident_quiet_seconds: float = Field(default=300.0, ge=0, le=86_400)
 
+    # Evidence collection (M3). It waits until alerts stop arriving for an
+    # incident (debounce), but never longer than the max wait after it opened.
+    enrichment_debounce_seconds: float = Field(default=60.0, ge=0, le=3600)
+    enrichment_max_wait_seconds: float = Field(default=180.0, ge=0, le=7200)
+    # How far before the incident's start to look for causes (deploys, errors).
+    evidence_lookback_seconds: float = Field(default=900.0, ge=0, le=86_400)
+    evidence_source_timeout_seconds: float = Field(default=20.0, gt=0, le=120)
+
     # Redis stream the background jobs go through (ADR-0002). Tests use their own.
     jobs_stream: str = Field(default="iip.jobs", min_length=1, max_length=200)
     # First retry wait for a failed or abandoned job; doubles per attempt, capped

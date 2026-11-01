@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from iip import __version__
 from iip.api.health import ReadinessChecks
 from iip.api.middleware import RequestContextMiddleware
-from iip.api.routes import incidents, metrics, system, webhooks
+from iip.api.routes import deploys, incidents, metrics, system, webhooks
 from iip.config import Settings, get_settings
 from iip.core.graph import load_graph
 from iip.db.engine import create_engine
@@ -148,6 +148,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.correlation = CorrelationConfig(
         graph=load_graph(settings.service_graph),
         window=timedelta(seconds=settings.correlation_window_seconds),
+        enrich_debounce=timedelta(seconds=settings.enrichment_debounce_seconds),
+        enrich_max_wait=timedelta(seconds=settings.enrichment_max_wait_seconds),
     )
     app.state.readiness = readiness
 
@@ -156,6 +158,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(metrics.router)
     app.include_router(home.router)
     app.include_router(webhooks.router)
+    app.include_router(deploys.router)
     app.include_router(incidents.router)
     app.include_router(pages.router)
     return app

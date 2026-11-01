@@ -43,6 +43,7 @@ make help         # all commands
 | `GET /healthz` | Liveness: the process is running |
 | `GET /readyz` | Readiness: Postgres and Redis are reachable (503 if not) |
 | `GET /version` | Package version and git commit of the running build |
+| `POST /v1/deploys` | Report a deploy; it becomes evidence for incidents on that service ([how](docs/deploys.md)) |
 | `GET /metrics` | Prometheus metrics: request latency, jobs, queue backlog, outbox lag, LLM calls (Bearer token if `IIP_METRICS_TOKEN` is set) |
 
 ### Operating the job queue
