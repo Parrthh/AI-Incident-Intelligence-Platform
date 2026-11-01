@@ -35,7 +35,8 @@ class _Group:
 
 
 def _tags(span: dict[str, Any]) -> dict[str, Any]:
-    return {t.get("key"): t.get("value") for t in cast(list[dict[str, Any]], span.get("tags", []))}
+    tags = cast(list[dict[str, Any]], span.get("tags", []))
+    return {str(t.get("key")): t.get("value") for t in tags}
 
 
 def _error_message(span: dict[str, Any], tags: dict[str, Any]) -> str:
