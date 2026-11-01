@@ -129,14 +129,15 @@ jobs:
           import { chromium } from 'playwright';
           const browser = await chromium.launch();
           // An explicit locale: Grafana fails to start on the container's default (POSIX).
-          const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, locale: 'en-US', timezoneId: 'UTC' });
+          const page = await browser.newPage({ viewport: { width: 1600, height: 1500 }, locale: 'en-US', timezoneId: 'UTC' });
           page.on('console', (m) => { if (m.type() === 'error') console.log('browser console:', m.text()); });
           page.on('requestfailed', (r) => console.log('request failed:', r.url(), r.failure()?.errorText));
-          await page.goto('http://127.0.0.1:3000/d/iip-pipeline?orgId=1&from=now-20m&to=now&kiosk', { waitUntil: 'load', timeout: 60000 });
+          await page.goto('http://127.0.0.1:3000/d/iip-pipeline?orgId=1&from=now-20m&to=now&refresh=', { waitUntil: 'load', timeout: 60000 });
           // Grafana is a single-page app: wait for a panel title, then for the charts to draw.
           await page.getByText('Webhook latency').first().waitFor({ timeout: 90000 });
-          await page.waitForTimeout(8000);
-          await page.screenshot({ path: 'grafana-dashboard.png', fullPage: true });
+          await page.locator('canvas').first().waitFor({ timeout: 60000 });
+          await page.waitForTimeout(5000);
+          await page.screenshot({ path: 'grafana-dashboard.png' });
           await browser.close();
           JS
           # The runner OS is newer than Playwright supports, so use its container.
