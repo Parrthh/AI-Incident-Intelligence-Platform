@@ -30,7 +30,7 @@ from typing import Any
 import asyncpg
 import httpx
 
-DEFAULT_STAGES = (10, 25, 50, 100, 200, 400)
+DEFAULT_STAGES = (25, 50, 100, 125, 150, 175, 200, 300)
 
 
 @dataclass
@@ -160,7 +160,8 @@ async def drain(database_url: str, run_id: str, expected: int, within: float) ->
             if row is None:  # pragma: no cover - an aggregate always returns a row
                 raise RuntimeError("no row from count query")
             done, rows, incidents = int(row["done"]), int(row["rows"]), int(row["incidents"])
-            if done >= expected or time.perf_counter() - began > within:
+            settled = done >= max(expected, incidents) and done == rows
+            if settled or time.perf_counter() - began > within:
                 break
             await asyncio.sleep(1)
         lag = await conn.fetchrow(
@@ -185,7 +186,11 @@ async def drain(database_url: str, run_id: str, expected: int, within: float) ->
             "incidents": incidents,
             "summaries_done": done,
             "summary_rows": rows,
-            "lost": expected - done,
+            # Requests that timed out on the client may still have been stored, so
+            # loss is counted from what the server stored: incidents without a
+            # finished summary. Accepted alerts with no incident would also be loss.
+            "lost": (incidents - done) + max(0, expected - incidents),
+            "stored_after_client_timeout": max(0, incidents - expected),
             "duplicates": rows - incidents,
             "drain_seconds": round(time.perf_counter() - began, 1),
             "incident_to_summary_p50_s": _round(lag["p50"]),

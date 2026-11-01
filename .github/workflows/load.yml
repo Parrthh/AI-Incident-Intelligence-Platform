@@ -9,7 +9,7 @@ on:
     inputs:
       stages:
         description: "Alerts per second for each stage, comma-separated"
-        default: "10,25,50,100,200,400"
+        default: "25,50,100,125,150,175,200,300"
       seconds:
         description: "Seconds per stage"
         default: "30"
@@ -79,12 +79,31 @@ jobs:
 
       - name: Run the load test
         run: |
+          # Sample container CPU and memory every 2 s while the load runs.
+          ( while true; do docker stats --no-stream --format '{{json .}}' | sed "s/^/$(date +%s) /"; sleep 2; done ) > docker-stats.txt &
+          sampler=$!
+          status=0
           uv run python loadtest/run.py \
             --token load-test-token \
             --database-url postgresql://iip:iip-dev-only@127.0.0.1:5432/iip \
-            --stages "${{ inputs.stages || '10,25,50,100,200,400' }}" \
+            --stages "${{ inputs.stages || '25,50,100,125,150,175,200,300' }}" \
             --seconds "${{ inputs.seconds || '30' }}" \
-            --out loadtest-result.json
+            --out loadtest-result.json || status=$?
+          kill $sampler || true
+          python3 - <<'PY'
+          import json, collections
+          peak = collections.defaultdict(float)
+          for line in open("docker-stats.txt"):
+              _, _, raw = line.partition(" ")
+              try:
+                  row = json.loads(raw)
+              except ValueError:
+                  continue
+              name = row["Name"].removeprefix("iip-dev-").rsplit("-", 1)[0]
+              peak[name] = max(peak[name], float(row["CPUPerc"].rstrip("%")))
+          print("::notice title=peak container CPU (%, 100 = one core)::" + json.dumps(dict(sorted(peak.items()))))
+          PY
+          exit $status
 
       - name: Report
         if: always()
@@ -106,17 +125,18 @@ jobs:
       - name: Screenshot the Grafana dashboard
         if: always()
         run: |
-          npx -y playwright@1.55.0 install --with-deps chromium >/dev/null
           cat > shot.mjs <<'JS'
           import { chromium } from 'playwright';
           const browser = await chromium.launch();
           const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
-          await page.goto('http://127.0.0.1:3000/d/iip-pipeline?orgId=1&from=now-30m&to=now&kiosk', { waitUntil: 'networkidle' });
+          await page.goto('http://127.0.0.1:3000/d/iip-pipeline?orgId=1&from=now-20m&to=now&kiosk', { waitUntil: 'networkidle' });
           await page.waitForTimeout(5000);
           await page.screenshot({ path: 'grafana-dashboard.png', fullPage: true });
           await browser.close();
           JS
-          npm init -y >/dev/null && npm i playwright@1.55.0 >/dev/null && node shot.mjs
+          # The runner OS is newer than Playwright supports, so use its container.
+          docker run --rm --network host -v "$PWD:/work" -w /work mcr.microsoft.com/playwright:v1.55.0-noble \
+            bash -c "npm init -y >/dev/null && npm i --no-save playwright@1.55.0 >/dev/null && node shot.mjs"
 
       - name: Collect logs
         if: always()
@@ -130,6 +150,7 @@ jobs:
             loadtest-result.json
             grafana-dashboard.png
             machine.txt
+            docker-stats.txt
             compose-logs.txt
           retention-days: 30
 
