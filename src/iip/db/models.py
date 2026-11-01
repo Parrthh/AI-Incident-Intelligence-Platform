@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     MetaData,
     Text,
     UniqueConstraint,
@@ -95,3 +96,35 @@ class Alert(Base):
     raw: Mapped[dict[str, Any]] = mapped_column(JSONB)
 
     incident: Mapped[Incident | None] = relationship(back_populates="alerts")
+
+
+class Analysis(Base):
+    """One LLM run for an incident. Every field needed to reproduce or audit the
+    result is stored: provider, model, prompt version, token counts, latency, error."""
+
+    __tablename__ = "analyses"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'done', 'failed')", name="status"),
+        Index("ix_analyses_incident_id_created_at", "incident_id", text("created_at DESC")),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    incident_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("incidents.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, server_default="pending")
+    provider: Mapped[str] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(Text)
+    prompt_version: Mapped[str] = mapped_column(Text)
+    summary: Mapped[str | None] = mapped_column(Text)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    attempts: Mapped[int] = mapped_column(Integer, server_default="0")
+    redactions: Mapped[int] = mapped_column(Integer, server_default="0")
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

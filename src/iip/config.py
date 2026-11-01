@@ -23,6 +23,7 @@ class Environment(StrEnum):
 
 
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR"]
+LLMProviderName = Literal["none", "fake", "gemini"]
 
 
 class Settings(BaseSettings):
@@ -81,6 +82,16 @@ class Settings(BaseSettings):
     # then remove the old one. Unset means the webhook is disabled (503).
     webhook_token: SecretStr | None = Field(default=None, validation_alias="IIP_WEBHOOK_TOKEN")
 
+    # LLM used for incident summaries (ADR-0005). "none" turns summaries off;
+    # "fake" returns a canned summary (local development without a key).
+    llm_provider: LLMProviderName = "none"
+    llm_model: str = "gemini-3.5-flash-lite"
+    llm_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
+    llm_max_retries: int = Field(default=2, ge=0, le=5)
+    gemini_api_key: SecretStr | None = Field(
+        default=None, validation_alias=AliasChoices("IIP_GEMINI_API_KEY", "GEMINI_API_KEY")
+    )
+
     # Run the worker loop inside the API process. Only for hosts without a
     # separate background worker (the free Render demo, ADR-0004). Self-hosted
     # installs run `iip worker` as its own container.
@@ -138,6 +149,8 @@ class Settings(BaseSettings):
             ]
             if missing:
                 raise ValueError(f"missing required settings in production: {', '.join(missing)}")
+        if self.llm_provider == "gemini" and self.gemini_api_key is None:
+            raise ValueError("IIP_LLM_PROVIDER=gemini requires GEMINI_API_KEY")
         return self
 
 

@@ -1,0 +1,34 @@
+name: LLM smoke test
+
+# Calls the real Gemini API, so it runs only when LLM code changes (and on demand).
+# Tests elsewhere never call a real LLM. Uses the GEMINI_API_KEY repo secret
+# (free tier; never printed).
+on:
+  pull_request:
+    paths:
+      - "src/iip/llm/**"
+      - ".github/workflows/llm-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    # Secrets aren't available to PRs from forks; skip rather than fail there.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - run: uv sync
+      - name: List models available to this key
+        run: uv run python scripts/llm_smoke.py list-models
+      - name: Summarize a fixture incident with the configured model
+        run: uv run python scripts/llm_smoke.py summarize

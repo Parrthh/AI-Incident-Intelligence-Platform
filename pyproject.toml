@@ -17,6 +17,7 @@ dependencies = [
     "asyncpg>=0.30",
     "alembic>=1.14",
     "redis>=5.2",
+    "httpx>=0.28",
 ]
 
 [project.scripts]

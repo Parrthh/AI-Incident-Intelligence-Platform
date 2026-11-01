@@ -51,13 +51,14 @@ Claude updates this at the end of every work session, in the same PR as the work
 | 0002 | Redis Streams as queue | planned (M2) | |
 | 0003 | Evidence IDs and citation validation | planned (M4) | |
 | 0004 | Free-tier hosted demo (Render + Neon + Upstash); limits recorded | accepted | 2026-11-01 |
-| 0005 | LLM provider interface (Gemini, Anthropic, Ollama) | planned (M1) | |
+| 0005 | LLM provider interface, Gemini first | accepted | 2026-11-01 |
 | 0006 | pgvector over a dedicated vector DB | planned (M5) | |
 
 ## Known tech debt
 
 | Item | Introduced | Plan to fix |
 |---|---|---|
+| Summaries run in FastAPI `BackgroundTasks`: a restart loses pending ones (the `pending` analysis row remains as evidence) | M1 | M2 durable queue |
 | No `uv.lock` committed: package registries are blocked in the dev session, so the lockfile can't be generated there. CI resolves fresh on each run. | M0 PR1 | Generate and commit `uv.lock` once registry access is allowed, then switch CI to `uv sync --locked` |
 
 ## Measured metrics

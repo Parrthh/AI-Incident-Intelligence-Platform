@@ -25,6 +25,7 @@ from iip.api.middleware import RequestContextMiddleware
 from iip.api.routes import home, system, webhooks
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
+from iip.llm.factory import build_provider
 from iip.queue.redis import create_redis
 from iip.worker.runner import run_worker
 
@@ -74,6 +75,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             readiness.register("redis", check_redis)
         app.state.redis = redis
 
+        llm = build_provider(settings)
+        app.state.llm = llm
+        if llm is not None:
+            logger.info("llm_configured", provider=llm.name, model=llm.model)
+
         worker_stop = asyncio.Event()
         worker_task: asyncio.Task[None] | None = None
         if settings.run_worker_in_api:
@@ -93,6 +99,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     worker_task.cancel()
                     with suppress(asyncio.CancelledError):
                         await worker_task
+            if llm is not None:
+                await llm.aclose()
             if redis is not None:
                 await redis.aclose()
             if engine is not None:
