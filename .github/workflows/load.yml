@@ -138,6 +138,31 @@ jobs:
           docker run --rm --network host -v "$PWD:/work" -w /work mcr.microsoft.com/playwright:v1.55.0-noble \
             bash -c "npm init -y >/dev/null && npm i --no-save playwright@1.55.0 >/dev/null && node shot.mjs"
 
+      - name: Check every dashboard panel returns data
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, urllib.parse, urllib.request
+          dash = json.load(urllib.request.urlopen("http://127.0.0.1:3000/api/dashboards/uid/iip-pipeline"))["dashboard"]
+          empty = []
+          for panel in dash["panels"]:
+              for target in panel["targets"]:
+                  # Query at the end of the run, over the whole run (range covers the rates).
+                  q = urllib.parse.urlencode({"query": target["expr"].replace("[1m]", "[15m]")})
+                  data = json.load(urllib.request.urlopen(f"http://127.0.0.1:9090/api/v1/query?{q}"))
+                  ok = data["status"] == "success" and data["data"]["result"]
+                  print(("ok    " if ok else "EMPTY ") + panel["title"] + " | " + target["expr"])
+                  if not ok:
+                      empty.append(panel["title"])
+          print(f"::notice title=dashboard panels::{len(dash['panels'])} panels, empty: {sorted(set(empty))}")
+          PY
+
+      - name: Print the screenshot (artifacts aren't always reachable)
+        if: always()
+        run: |
+          [ -f grafana-dashboard.png ] || exit 0
+          echo "SCREENSHOT-BEGIN"; base64 -w 4000 grafana-dashboard.png; echo "SCREENSHOT-END"
+
       - name: Collect logs
         if: always()
         run: $COMPOSE logs --no-color > compose-logs.txt 2>&1 || true
