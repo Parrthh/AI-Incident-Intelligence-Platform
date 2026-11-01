@@ -4,9 +4,9 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 ## Current status
 
-- **Active milestone:** M0 Foundations
-- **Current step:** M1 acceptance: the live demo needs real incidents (chaos run forwarding, waits on the `IIP_DEMO_WEBHOOK_TOKEN` secret)
-- **Next up:** M2 async pipeline (Redis Streams queue, outbox, retries, DLQ)
+- **Active milestone:** M2 Async pipeline (M1 acceptance still waits on the `IIP_DEMO_WEBHOOK_TOKEN` secret for live demo data)
+- **Current step:** M2 PR A: Redis Streams queue, retries with backoff, dead-letter stream (ADR-0002)
+- **Next up:** M2 PR B: transactional outbox, worker wiring, crash tests
 - **Blockers:** none
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
 - **Live URL:** https://iip-demo.onrender.com (free tier: sleeps after 15 idle minutes, about 1 minute to wake)
@@ -48,7 +48,7 @@ Claude updates this at the end of every work session, in the same PR as the work
 | - | $0 hosted demo on free tiers instead of AWS | decided | 2026-10-31 |
 | - | Parth is sole commit author, no AI attribution lines | decided | 2026-10-31 |
 | 0001 | Python + FastAPI monolith package, separate API and worker entrypoints | accepted | 2026-11-01 |
-| 0002 | Redis Streams as queue | planned (M2) | |
+| 0002 | Redis Streams as queue | accepted | 2026-11-01 |
 | 0003 | Evidence IDs and citation validation | planned (M4) | |
 | 0004 | Free-tier hosted demo (Render + Neon + Upstash); limits recorded | accepted | 2026-11-01 |
 | 0005 | LLM provider interface, Gemini first | accepted | 2026-11-01 |
