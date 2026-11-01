@@ -215,32 +215,33 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     t_on = time.monotonic()
     set_flag(demo_dir, scenario.flag, scenario.on_variant)
 
-    opened = wait_for("an open incident", lambda: incidents("open"), 900, 15)
+    target = scenario.root_cause_service
+    pre_existing = {i["id"] for i in incidents()}
+
+    def target_incidents(status: str | None = None) -> list[dict[str, Any]]:
+        return [
+            i for i in incidents(status) if target in i["services"] and i["id"] not in pre_existing
+        ]
+
+    opened = wait_for(f"an open incident for {target}", lambda: target_incidents("open"), 900, 15)
     t_opened = time.monotonic()
-    log(f"incident(s) opened after {t_opened - t_on:.0f}s: {[i['title'] for i in opened]}")
+    log(f"{target} incident opened after {t_opened - t_on:.0f}s: {opened[0]['title']}")
+    target_id = opened[0]["id"]
 
     def summary_finished() -> dict[str, Any] | None:
-        for inc in incidents("open"):
-            s = inc.get("summary")
-            if s and s["status"] in {"done", "failed"}:
-                return inc
-        return None
+        inc = get_json(f"{IIP}/v1/incidents/{target_id}")
+        s = inc.get("summary")
+        return inc if s and s["status"] in {"done", "failed"} else None
 
-    summarized = wait_for("a finished summary", summary_finished, 300, 5)
+    summarized = wait_for("the incident's summary", summary_finished, 300, 5)
     t_summarized = time.monotonic()
 
     set_flag(demo_dir, scenario.flag, "off")
     t_off = time.monotonic()
-    first_id = opened[0]["id"]
-    wait_for(
-        "the first incident to resolve",
-        lambda: get_json(f"{IIP}/v1/incidents/{first_id}")["status"] == "resolved",
-        1200,
-        20,
-    )
+    wait_for(f"all {target} incidents to resolve", lambda: not target_incidents("open"), 1200, 20)
     t_resolved = time.monotonic()
 
-    final = incidents()
+    final = [i for i in incidents() if i["id"] not in pre_existing]
     return {
         "scenario": scenario.name,
         "root_cause_service": scenario.root_cause_service,
@@ -261,14 +262,7 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     }
 
 
-def report(result: dict[str, Any], run_dir: Path) -> None:
-    annotate(
-        "notice",
-        "chaos result",
-        json.dumps({k: v for k, v in result.items() if k != "summary_text"}),
-    )
-    if result.get("summary_text"):
-        annotate("notice", "summary text", result["summary_text"])
+def print_captures(run_dir: Path) -> None:
     captures = sorted((run_dir / "captures").glob("*.json"))
     annotate("notice", "captures", f"{len(captures)} Alertmanager payloads captured")
     firing = next((p for p in captures if p.name.endswith("_firing.json")), None)
@@ -279,6 +273,17 @@ def report(result: dict[str, Any], run_dir: Path) -> None:
     ):
         if path:
             annotate("notice", label, path.read_text())
+
+
+def report(result: dict[str, Any], run_dir: Path) -> None:
+    annotate(
+        "notice",
+        "chaos result",
+        json.dumps({k: v for k, v in result.items() if k != "summary_text"}),
+    )
+    if result.get("summary_text"):
+        annotate("notice", "summary text", result["summary_text"])
+    print_captures(run_dir)
 
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary_file:
@@ -320,6 +325,7 @@ def main() -> int:
     except (TimeoutError, RuntimeError, subprocess.CalledProcessError) as exc:
         annotate("error", "chaos run failed", str(exc))
         diagnostics()
+        print_captures(args.run_dir.resolve())
         return 1
     report(result, args.run_dir.resolve())
     return 0
