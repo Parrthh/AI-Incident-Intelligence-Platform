@@ -55,6 +55,7 @@ async def dlq_replay(redis: Redis, stream: str, ids: list[str] | None = None) ->
     losing one; handlers are idempotent.
     """
     dlq = dlq_name(stream)
+    entries: list[tuple[str, dict[str, str]]]
     if ids is None:
         entries = cast(
             list[tuple[str, dict[str, str]]],
@@ -82,20 +83,17 @@ async def dlq_replay(redis: Redis, stream: str, ids: list[str] | None = None) ->
 async def dlq_purge(redis: Redis, stream: str) -> int:
     """Delete every dead letter. Returns how many there were."""
     dlq = dlq_name(stream)
-    count = cast(int, await redis.xlen(dlq))  # pyright: ignore[reportUnknownMemberType]
+    count: int = await redis.xlen(dlq)  # pyright: ignore[reportUnknownMemberType]
     await redis.delete(dlq)
     return count
 
 
 async def queue_stats(redis: Redis, stream: str) -> QueueStats:
-    length = cast(int, await redis.xlen(stream))  # pyright: ignore[reportUnknownMemberType]
-    dead = cast(int, await redis.xlen(dlq_name(stream)))  # pyright: ignore[reportUnknownMemberType]
+    length: int = await redis.xlen(stream)  # pyright: ignore[reportUnknownMemberType]
+    dead: int = await redis.xlen(dlq_name(stream))  # pyright: ignore[reportUnknownMemberType]
     try:
-        summary = cast(dict[str, Any], await redis.xpending(stream, CONSUMER_GROUP))  # pyright: ignore[reportUnknownMemberType]
-        consumers = cast(
-            list[dict[str, Any]],
-            await redis.xinfo_consumers(stream, CONSUMER_GROUP),  # pyright: ignore[reportUnknownMemberType]
-        )
+        summary: dict[str, Any] = await redis.xpending(stream, CONSUMER_GROUP)  # pyright: ignore[reportUnknownMemberType]
+        consumers: list[dict[str, Any]] = await redis.xinfo_consumers(stream, CONSUMER_GROUP)  # pyright: ignore[reportUnknownMemberType]
     except ResponseError:  # no stream or group yet: nothing has been consumed
         summary, consumers = {"pending": 0}, []
     return QueueStats(
@@ -114,10 +112,7 @@ async def prune_consumers(redis: Redis, stream: str, idle_ms: int = 3_600_000) -
     deleting a consumer that still holds jobs would drop those jobs.
     """
     try:
-        consumers = cast(
-            list[dict[str, Any]],
-            await redis.xinfo_consumers(stream, CONSUMER_GROUP),  # pyright: ignore[reportUnknownMemberType]
-        )
+        consumers: list[dict[str, Any]] = await redis.xinfo_consumers(stream, CONSUMER_GROUP)  # pyright: ignore[reportUnknownMemberType]
     except ResponseError:
         return []
     removed: list[str] = []
