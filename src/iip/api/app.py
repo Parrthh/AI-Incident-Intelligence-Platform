@@ -26,9 +26,10 @@ from iip.api.routes import incidents, system, webhooks
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
 from iip.llm.factory import build_provider
+from iip.queue.outbox import OutboxRelay
 from iip.queue.redis import create_redis
 from iip.web import home, pages
-from iip.worker.runner import run_worker
+from iip.worker.runner import WorkerDeps, create_consumer_redis, run_worker
 
 logger = structlog.get_logger(__name__)
 
@@ -81,25 +82,45 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if llm is not None:
             logger.info("llm_configured", provider=llm.name, model=llm.model)
 
-        worker_stop = asyncio.Event()
+        background_stop = asyncio.Event()
+        background: list[asyncio.Task[None]] = []
+
+        # The outbox relay publishes jobs the webhook committed (ADR-0008). It runs
+        # in the API process because that is where the jobs are written.
+        relay: OutboxRelay | None = None
+        if app.state.sessionmaker is not None and redis is not None:
+            relay = OutboxRelay(
+                app.state.sessionmaker, redis, sweep_seconds=settings.outbox_sweep_seconds
+            )
+            background.append(asyncio.create_task(relay.run(background_stop), name="iip-outbox"))
+        app.state.outbox_relay = relay
+
         worker_task: asyncio.Task[None] | None = None
+        consumer_redis = None
         if settings.run_worker_in_api:
-            worker_task = asyncio.create_task(run_worker(worker_stop), name="iip-worker")
-            logger.info("worker_running_in_api_process")
+            deps = None
+            if app.state.sessionmaker is not None and settings.redis_url is not None:
+                consumer_redis = create_consumer_redis(settings.redis_url.get_secret_value())
+                deps = WorkerDeps(app.state.sessionmaker, consumer_redis, llm, settings)
+            worker_task = asyncio.create_task(run_worker(background_stop, deps), name="iip-worker")
+            background.append(worker_task)
+            logger.info("worker_running_in_api_process", consuming=deps is not None)
         app.state.worker_task = worker_task
 
         try:
             yield
         finally:
-            if worker_task is not None:
-                worker_stop.set()
+            background_stop.set()
+            for task in background:
                 # Give in-flight work a bounded time to finish, then cancel.
                 try:
-                    await asyncio.wait_for(worker_task, timeout=15)
+                    await asyncio.wait_for(task, timeout=15)
                 except TimeoutError:
-                    worker_task.cancel()
+                    task.cancel()
                     with suppress(asyncio.CancelledError):
-                        await worker_task
+                        await task
+            if consumer_redis is not None:
+                await consumer_redis.aclose()
             if llm is not None:
                 await llm.aclose()
             if redis is not None:

@@ -9,14 +9,14 @@ def make_queue() -> StreamQueue:
 
 def test_backoff_doubles_per_delivery_and_is_capped() -> None:
     queue = make_queue()
-    assert [queue.backoff_s(n) for n in range(1, 5)] == [10, 20, 40, 80]
+    assert [queue.backoff_s(n) for n in range(1, 5)] == [120, 240, 480, 600]
     assert queue.backoff_s(50) == queue.max_backoff_s
 
 
 def test_worst_case_time_to_dead_letter_is_bounded() -> None:
-    # Total wait across all retries before giving up: 10+20+40+80 = 150 s.
+    # Total wait across all retries before giving up: 2+4+8+10 = 24 minutes.
     queue = make_queue()
-    assert sum(queue.backoff_s(n) for n in range(1, queue.max_deliveries)) == 150
+    assert sum(queue.backoff_s(n) for n in range(1, queue.max_deliveries)) == 24 * 60
 
 
 def test_dlq_name() -> None:

@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     # installs run `iip worker` as its own container.
     run_worker_in_api: bool = False
 
+    # Redis stream the background jobs go through (ADR-0002). Tests use their own.
+    jobs_stream: str = Field(default="iip.jobs", min_length=1, max_length=200)
+    # Fallback sweep for outbox rows the immediate publish missed (ADR-0008).
+    # Longer than Neon's 5-minute auto-suspend on purpose, so an idle demo lets
+    # the database sleep.
+    outbox_sweep_seconds: float = Field(default=600.0, gt=0)
+
     # Connection pool size per process. Free-tier databases allow few
     # connections, so keep this small.
     db_pool_size: int = Field(default=5, ge=1, le=50)

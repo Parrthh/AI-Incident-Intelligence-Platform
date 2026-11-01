@@ -1,23 +1,24 @@
 """Inbound webhooks.
 
 The handler does only fast work: validate, store, commit, answer 202. Anything
-slow (LLM calls, enrichment) runs later, off the request path, so Alertmanager
-never times out waiting for us and retries a delivery we already accepted.
+slow (LLM calls, enrichment) runs later in the worker, so Alertmanager never
+times out waiting for us and retries a delivery we already accepted.
 
-Summaries for new incidents are scheduled with ``BackgroundTasks``, which run
-after the response is sent. Known M1 tech debt: they live only in this process,
-so a restart loses pending ones. M2 replaces this with a durable queue.
+Jobs for new incidents are written to the outbox in the same transaction as the
+alerts (ADR-0008), so a committed incident always has its job. The outbox relay
+is then nudged to publish them to Redis right away.
 """
 
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel
 
 from iip.api.deps import SessionDep, require_webhook_token
 from iip.ingest.alertmanager import AlertmanagerPayload
 from iip.ingest.service import ingest_alertmanager
-from iip.llm.summarize import summarize_incident
+from iip.queue.jobs import JOB_SUMMARIZE
+from iip.queue.outbox import OutboxRelay, enqueue
 
 router = APIRouter(prefix="/v1/webhooks", tags=["webhooks"])
 
@@ -40,24 +41,17 @@ async def alertmanager_webhook(
     payload: AlertmanagerPayload,
     session: SessionDep,
     request: Request,
-    background: BackgroundTasks,
 ) -> IngestResponse:
+    settings = request.app.state.settings
     result = await ingest_alertmanager(session, payload)
-    # Commit before scheduling: the background task reads the incident in its own
-    # session, so it must already be visible.
+    if settings.llm_provider != "none":
+        for incident_id in result.new_incident_ids:
+            enqueue(session, settings.jobs_stream, JOB_SUMMARIZE, {"incident_id": str(incident_id)})
     await session.commit()
 
-    llm = request.app.state.llm
-    if llm is not None:
-        settings = request.app.state.settings
-        for incident_id in result.new_incident_ids:
-            background.add_task(
-                summarize_incident,
-                request.app.state.sessionmaker,
-                llm,
-                incident_id,
-                max_retries=settings.llm_max_retries,
-            )
+    relay: OutboxRelay | None = request.app.state.outbox_relay
+    if relay is not None and result.new_incident_ids:
+        relay.notify()
     return IngestResponse(
         received=result.received,
         new_alerts=result.new_alerts,

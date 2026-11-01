@@ -5,8 +5,8 @@ Claude updates this at the end of every work session, in the same PR as the work
 ## Current status
 
 - **Active milestone:** M2 Async pipeline (M1 acceptance still waits on the `IIP_DEMO_WEBHOOK_TOKEN` secret for live demo data)
-- **Current step:** M2 PR A: Redis Streams queue, retries with backoff, dead-letter stream (ADR-0002)
-- **Next up:** M2 PR B: transactional outbox, worker wiring, crash tests
+- **Current step:** M2 PR B: transactional outbox, worker wiring, crash tests (PR A, the Redis Streams queue, is merged)
+- **Next up:** M2 PR C: queue metrics, DLQ inspect and replay CLI, load test
 - **Blockers:** none
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
 - **Live URL:** https://iip-demo.onrender.com (free tier: sleeps after 15 idle minutes, about 1 minute to wake)
@@ -54,12 +54,12 @@ Claude updates this at the end of every work session, in the same PR as the work
 | 0005 | LLM provider interface, Gemini first | accepted | 2026-11-01 |
 | 0006 | pgvector over a dedicated vector DB | planned (M5) | |
 | 0007 | Server-rendered UI first, React when interactivity needs it | accepted | 2026-11-01 |
+| 0008 | Transactional outbox for jobs | accepted | 2026-11-01 |
 
 ## Known tech debt
 
 | Item | Introduced | Plan to fix |
 |---|---|---|
-| Summaries run in FastAPI `BackgroundTasks`: a restart loses pending ones (the `pending` analysis row remains as evidence) | M1 | M2 durable queue |
 | No `uv.lock` committed: package registries are blocked in the dev session, so the lockfile can't be generated there. CI resolves fresh on each run. | M0 PR1 | Generate and commit `uv.lock` once registry access is allowed, then switch CI to `uv sync --locked` |
 
 ## Measured metrics

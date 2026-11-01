@@ -1,27 +1,34 @@
 """Write an LLM summary for an incident and store it as an ``analyses`` row.
 
-Flow:
-1. Load the incident and its alerts.
+Runs as a background job (worker, ADR-0002). Flow:
+1. Load the incident and its alerts. Stop if a finished summary already exists.
 2. Build the prompt from the alert data and redact secrets out of it.
-3. Record a ``pending`` analysis first, so a run that crashes midway is visible
-   instead of silently missing.
-4. Call the provider with retries; store ``done`` with the summary, tokens,
-   latency and attempt count, or ``failed`` with the error.
+3. **Claim** the incident's analysis row: insert it, or take over an existing
+   unfinished one, marking it ``pending`` and ``claimed_by`` this job delivery.
+4. Call the provider with retries, with no database connection held.
+5. Store ``done`` with the summary, tokens, latency and attempts, or ``failed``
+   with the error, and release the claim.
 
-Idempotent: if a finished summary already exists for this incident and prompt
-version, it's reused and the LLM isn't called again. Retried deliveries and
-repeated triggers therefore don't spend quota.
-
-M1 runs this in FastAPI ``BackgroundTasks`` after the webhook responds. That is
-known tech debt: if the process stops before the task finishes, the summary is
-lost (the pending row stays behind as evidence). M2 moves it onto a durable queue.
+Idempotency. Delivery is at least once, so the same job can arrive twice, and
+two different jobs can exist for one incident (an outbox row published twice).
+There is one analyses row per incident, kind and prompt version (a unique
+constraint), and a delivery may only work on it if:
+- it isn't ``done`` (a finished summary is reused, the LLM isn't called again), and
+- nobody else holds the claim: it's unclaimed, claimed by this same delivery
+  (a redelivery after a crash), or the claim is older than ``lease_seconds``
+  (the holder died and its job is gone).
+Otherwise the outcome is ``busy`` and the job just finishes: the holder's own
+job is still pending in Redis and is redelivered if that holder dies.
 """
 
 import uuid
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import func, literal, or_, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 
@@ -36,6 +43,19 @@ logger = structlog.get_logger(__name__)
 SUMMARY_PROMPT = ("summary", "v0")
 KIND_SUMMARY = "summary"
 MAX_ALERTS_IN_PROMPT = 20
+# How long a claim protects a row. Far longer than one run takes (about 95 s at
+# most), so it only matters when a worker died and its job was lost.
+DEFAULT_LEASE_SECONDS = 600
+
+Outcome = Literal["done", "reused", "busy", "failed", "missing"]
+
+
+@dataclass(frozen=True)
+class SummaryResult:
+    outcome: Outcome
+    analysis_id: uuid.UUID | None = None
+    error: str | None = None
+    retryable: bool = False
 
 
 def format_alerts(alerts: list[Alert]) -> str:
@@ -71,13 +91,13 @@ async def summarize_incident(
     incident_id: uuid.UUID,
     *,
     max_retries: int = 2,
-) -> uuid.UUID | None:
-    """Summarize one incident. Returns the analysis id, or None if the incident is gone.
-
-    Never raises for LLM failures: they're recorded on the analysis row. This runs
-    in the background, where an exception would only end up in a log line.
-    """
+    claim_token: str | None = None,
+    lease_seconds: float = DEFAULT_LEASE_SECONDS,
+) -> SummaryResult:
+    """Summarize one incident. Never raises for LLM failures: they're recorded on
+    the row and returned, and the caller decides whether to retry the job."""
     prompt = load_prompt(*SUMMARY_PROMPT)
+    token = claim_token or uuid.uuid4().hex
     log = logger.bind(incident_id=str(incident_id), prompt=prompt.id, model=provider.model)
 
     async with sessionmaker() as session:
@@ -88,27 +108,25 @@ async def summarize_incident(
         )
         if incident is None:
             log.warning("summary_skipped_incident_missing")
-            return None
+            return SummaryResult("missing")
 
-        existing = await _existing_summary(session, incident_id, prompt.version)
+        existing = await _done_summary(session, incident_id, prompt.id)
         if existing is not None:
             log.info("summary_reused", analysis_id=str(existing))
-            return existing
+            return SummaryResult("reused", existing)
 
         user_prompt, redactions = build_prompt(prompt, incident)
-        analysis = Analysis(
-            incident_id=incident_id,
-            kind=KIND_SUMMARY,
-            status="pending",
-            provider=provider.name,
-            model=provider.model,
-            prompt_version=prompt.id,
-            redactions=redactions,
-            attempts=0,
+        claimed = await _claim(
+            session, incident_id, provider, prompt.id, redactions, token, lease_seconds
         )
-        session.add(analysis)
         await session.commit()
-        analysis_id = analysis.id
+        if claimed is None:
+            done = await _done_summary(session, incident_id, prompt.id)
+            if done is not None:  # finished by another delivery just now
+                return SummaryResult("reused", done)
+            log.info("summary_busy", claim=token)
+            return SummaryResult("busy")
+        analysis_id, previous_attempts = claimed
 
     attempts = 0
 
@@ -131,9 +149,11 @@ async def summarize_incident(
         row = await session.get(Analysis, analysis_id)
         if row is None:  # deleted meanwhile (incident removed)
             log.warning("summary_skipped_analysis_missing", analysis_id=str(analysis_id))
-            return None
-        row.attempts = attempts
+            return SummaryResult("missing")
+        row.attempts = previous_attempts + attempts
         row.completed_at = datetime.now(UTC)
+        row.claimed_by = None
+        row.claimed_at = None
         if response is not None:
             row.status = "done"
             row.summary = response.text
@@ -141,6 +161,7 @@ async def summarize_incident(
             row.input_tokens = response.input_tokens
             row.output_tokens = response.output_tokens
             row.latency_ms = response.latency_ms
+            row.error = None
         else:
             row.status = "failed"
             row.error = str(error)[:1000]
@@ -156,27 +177,74 @@ async def summarize_incident(
             output_tokens=response.output_tokens,
             redactions=redactions,
         )
-    else:
-        log.warning(
-            "summary_failed",
-            analysis_id=str(analysis_id),
-            attempts=attempts,
-            error=str(error),
-            retryable=error.retryable if error else None,
-        )
-    return analysis_id
+        return SummaryResult("done", analysis_id)
+    retryable = error.retryable if error else False
+    log.warning(
+        "summary_failed",
+        analysis_id=str(analysis_id),
+        attempts=attempts,
+        error=str(error),
+        retryable=retryable,
+    )
+    return SummaryResult("failed", analysis_id, error=str(error), retryable=retryable)
 
 
-async def _existing_summary(
-    session: AsyncSession, incident_id: uuid.UUID, prompt_version: str
+async def _claim(
+    session: AsyncSession,
+    incident_id: uuid.UUID,
+    provider: LLMProvider,
+    prompt_id: str,
+    redactions: int,
+    token: str,
+    lease_seconds: float,
+) -> tuple[uuid.UUID, int] | None:
+    """Insert or take over the analysis row in one atomic statement.
+
+    Returns (id, attempts so far), or None if the row is done or claimed by
+    someone else. ``ON CONFLICT ... DO UPDATE ... WHERE`` makes the check and the
+    takeover a single step, so two deliveries racing can't both win.
+    """
+    stmt = insert(Analysis).values(
+        incident_id=incident_id,
+        kind=KIND_SUMMARY,
+        status="pending",
+        provider=provider.name,
+        model=provider.model,
+        prompt_version=prompt_id,
+        redactions=redactions,
+        attempts=0,
+        claimed_by=token,
+        claimed_at=func.now(),
+    )
+    stmt = stmt.on_conflict_do_update(
+        constraint="uq_analyses_incident_kind_prompt",
+        set_={
+            "status": "pending",
+            "provider": stmt.excluded.provider,
+            "model": stmt.excluded.model,
+            "redactions": stmt.excluded.redactions,
+            "claimed_by": token,
+            "claimed_at": func.now(),
+        },
+        where=(Analysis.status != "done")
+        & or_(
+            Analysis.claimed_by.is_(None),
+            Analysis.claimed_by == token,
+            Analysis.claimed_at < func.now() - literal(timedelta(seconds=lease_seconds)),
+        ),
+    ).returning(Analysis.id, Analysis.attempts)
+    row = (await session.execute(stmt)).one_or_none()
+    return None if row is None else (row[0], row[1])
+
+
+async def _done_summary(
+    session: AsyncSession, incident_id: uuid.UUID, prompt_id: str
 ) -> uuid.UUID | None:
     return await session.scalar(
-        select(Analysis.id)
-        .where(
+        select(Analysis.id).where(
             Analysis.incident_id == incident_id,
             Analysis.kind == KIND_SUMMARY,
             Analysis.status == "done",
-            Analysis.prompt_version == f"{SUMMARY_PROMPT[0]}_{prompt_version}",
+            Analysis.prompt_version == prompt_id,
         )
-        .limit(1)
     )
