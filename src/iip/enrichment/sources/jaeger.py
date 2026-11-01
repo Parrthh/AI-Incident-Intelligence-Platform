@@ -54,7 +54,8 @@ def _is_error(tags: dict[str, Any]) -> bool:
     return tags.get("error") in (True, "true") or tags.get("otel.status_code") == "ERROR"
 
 
-def failing_span_groups(traces: list[dict[str, Any]]) -> list[_Group]:
+def failing_span_groups(traces: list[dict[str, Any]], focus: tuple[str, ...] = ()) -> list[_Group]:
+    """Failing span groups; the incident's own services first, then by count."""
     groups: dict[tuple[str, str, str], _Group] = {}
     seen_spans: set[str] = set()
     for trace in traces:
@@ -81,7 +82,7 @@ def failing_span_groups(traces: list[dict[str, Any]]) -> list[_Group]:
             if trace_id not in group.trace_ids and len(group.trace_ids) < 3:
                 group.trace_ids.append(trace_id)
             group.max_duration_ms = max(group.max_duration_ms, int(span.get("duration", 0)) / 1000)
-    return sorted(groups.values(), key=lambda g: -g.count)
+    return sorted(groups.values(), key=lambda g: (g.service not in focus, -g.count))
 
 
 class JaegerSource:
@@ -105,7 +106,7 @@ class JaegerSource:
             )
             traces.extend(cast(list[dict[str, Any]], data.get("data") or []))
         items: list[EvidenceItem] = []
-        for group in failing_span_groups(traces)[:TOP_GROUPS]:
+        for group in failing_span_groups(traces, ctx.services)[:TOP_GROUPS]:
             first = group.first_seen or ctx.started_at
             spans = "span" if group.count == 1 else "spans"
             items.append(

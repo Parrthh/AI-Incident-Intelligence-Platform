@@ -49,7 +49,7 @@ def test_log_template_masks_variable_parts() -> None:
         "id 3f2a9c1e-1b2c-4d5e-8f90-123456789abc took 532ms"
     )
     assert log_template(line) == (
-        "<time> Payment request failed. Invalid token. user=<num> order <str> trace <hex> "
+        "<time> Payment request failed. Invalid token. user=<val> order <str> trace <hex> "
         "from <ip> id <uuid> took <num>"
     )
 
@@ -74,3 +74,13 @@ def test_group_logs_counts_patterns_per_service_biggest_first() -> None:
     assert first.last_seen == T0 + timedelta(seconds=3)
     assert first.example == "charge failed for user 42"  # the earliest line
     assert first.levels == {"ERROR"}
+
+
+def test_baseline_ignores_the_minutes_just_before_the_alert() -> None:
+    # Normal for 10 minutes, then failing for 4 minutes before the alert fired.
+    points = series([0.0] * 10 + [1.0] * 4 + [1.0, 1.0], start_minute=-14)
+    change = describe_series(points, T0, min_absolute_change=0.05)
+
+    assert change is not None
+    assert change.baseline == 0.0  # not 1.0: the 4 failing minutes aren't "normal"
+    assert change.changed_at == T0 - timedelta(minutes=4)

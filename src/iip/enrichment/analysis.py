@@ -13,7 +13,7 @@ import re
 import statistics
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # --------------------------------------------------------------------- metrics
 
@@ -27,6 +27,12 @@ class SeriesChange:
     changed: bool
 
 
+# Alerts fire minutes after a problem starts: the rule's rate window (3 min) plus
+# its `for` delay (1 min). The baseline stops this long before the incident start,
+# so the start of the problem doesn't count as "normal".
+BASELINE_GAP = timedelta(minutes=5)
+
+
 def describe_series(
     points: Sequence[tuple[datetime, float]],
     incident_start: datetime,
@@ -34,7 +40,9 @@ def describe_series(
     min_absolute_change: float = 0.0,
 ) -> SeriesChange | None:
     """How the series moved around the incident start. None if there's no data after it."""
-    before = [v for t, v in points if t < incident_start]
+    before = [v for t, v in points if t < incident_start - BASELINE_GAP] or [
+        v for t, v in points if t < incident_start
+    ]
     after = [(t, v) for t, v in points if t >= incident_start]
     if not after:
         return None
@@ -62,6 +70,8 @@ _MASKS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\b[0-9a-f]{16,}\b", re.I), "<hex>"),
     (re.compile(r"\b\d{4}-\d{2}-\d{2}[T ][\d:.]+Z?\b"), "<time>"),
     (re.compile(r"(['\"])(?:(?!\1).){1,200}\1"), "<str>"),
+    # key=value pairs: the key says what it is, the value varies per request.
+    (re.compile(r"(?<=[\w.]=)[^\s,;&]+"), "<val>"),
     (re.compile(r"(?<![\w.])-?\d+(?:\.\d+)?(?:ms|s|%)?\b"), "<num>"),
 ]
 _SPACES = re.compile(r"\s+")

@@ -197,7 +197,7 @@ async def test_loki_turns_lines_into_counted_patterns() -> None:
     assert query["limit"] == "2000"
     assert items[0].summary == (
         "payment log pattern seen 2 times since 14:38:21: "
-        '"Payment request failed. Invalid token. user=<num>"'
+        '"Payment request failed. Invalid token. user=<val>"'
     )
     assert items[0].payload["lines_scanned"] == 3
     assert items[1].summary.startswith("payment log pattern seen once since 14:38:29")
