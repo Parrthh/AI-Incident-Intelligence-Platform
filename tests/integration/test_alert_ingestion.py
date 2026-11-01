@@ -25,11 +25,11 @@ AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 @pytest.fixture
 def app(migrated_database_url: str) -> FastAPI:
-    settings = Settings(  # pyright: ignore[reportCallIssue]
+    settings = Settings(
         env=Environment.TEST,
         database_url=SecretStr(migrated_database_url),
         webhook_token=SecretStr(TOKEN),
-        _env_file=None,
+        _env_file=None,  # pyright: ignore[reportCallIssue]
     )
     return create_app(settings)
 

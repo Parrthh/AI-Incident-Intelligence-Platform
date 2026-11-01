@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import structlog
-from sqlalchemy import Label, case, literal_column, select, update
+from sqlalchemy import Boolean, Label, case, literal_column, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -136,7 +136,7 @@ async def _ingest_one(
 
 def _inserted_flag() -> Label[bool]:
     """``xmax = 0`` is true only for a row this statement inserted (see module docs)."""
-    return literal_column("(xmax = 0)").label("inserted")
+    return literal_column("(xmax = 0)", type_=Boolean).label("inserted")
 
 
 async def get_incident(session: AsyncSession, incident_id: uuid.UUID) -> Incident | None:
