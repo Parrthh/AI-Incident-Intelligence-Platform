@@ -69,10 +69,15 @@ class SlowProvider(FakeProvider):
         system: str | None = None,
         max_output_tokens: int = 1024,
         temperature: float = 0.2,
+        json_mode: bool = False,
     ) -> LLMResponse:
         await asyncio.sleep(self.delay)
         return await super().generate(
-            prompt, system=system, max_output_tokens=max_output_tokens, temperature=temperature
+            prompt,
+            system=system,
+            max_output_tokens=max_output_tokens,
+            temperature=temperature,
+            json_mode=json_mode,
         )
 
 

@@ -42,6 +42,10 @@ class LLMProvider(Protocol):
         system: str | None = None,
         max_output_tokens: int = 1024,
         temperature: float = 0.2,
-    ) -> LLMResponse: ...
+        json_mode: bool = False,
+    ) -> LLMResponse:
+        """``json_mode`` asks the model for a JSON object only (no prose, no code
+        fences). Callers still validate it: no model guarantees the shape."""
+        ...
 
     async def aclose(self) -> None: ...

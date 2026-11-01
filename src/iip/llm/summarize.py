@@ -117,7 +117,7 @@ async def summarize_incident(
             return SummaryResult("reused", existing)
 
         user_prompt, redactions = build_prompt(prompt, incident)
-        claimed = await _claim(
+        claimed = await claim_analysis_row(
             session, incident_id, provider, prompt.id, redactions, token, lease_seconds
         )
         await session.commit()
@@ -197,7 +197,7 @@ async def summarize_incident(
     return SummaryResult("failed", analysis_id, error=str(error), retryable=retryable)
 
 
-async def _claim(
+async def claim_analysis_row(
     session: AsyncSession,
     incident_id: uuid.UUID,
     provider: LLMProvider,
@@ -205,6 +205,9 @@ async def _claim(
     redactions: int,
     token: str,
     lease_seconds: float,
+    *,
+    kind: str = KIND_SUMMARY,
+    input_hash: str = "",
 ) -> tuple[uuid.UUID, int] | None:
     """Insert or take over the analysis row in one atomic statement.
 
@@ -214,18 +217,19 @@ async def _claim(
     """
     stmt = insert(Analysis).values(
         incident_id=incident_id,
-        kind=KIND_SUMMARY,
+        kind=kind,
         status="pending",
         provider=provider.name,
         model=provider.model,
         prompt_version=prompt_id,
         redactions=redactions,
         attempts=0,
+        input_hash=input_hash,
         claimed_by=token,
         claimed_at=func.now(),
     )
     stmt = stmt.on_conflict_do_update(
-        constraint="uq_analyses_incident_kind_prompt",
+        constraint="uq_analyses_incident_kind_prompt_input",
         set_={
             "status": "pending",
             "provider": stmt.excluded.provider,

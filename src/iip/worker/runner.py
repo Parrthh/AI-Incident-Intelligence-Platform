@@ -18,6 +18,7 @@ import signal
 import socket
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any
 
 import structlog
 from prometheus_client import start_http_server
@@ -33,9 +34,9 @@ from iip.llm.factory import build_provider
 from iip.queue.jobs import CONSUMER_GROUP
 from iip.queue.outbox import OutboxRelay
 from iip.queue.redis import create_redis
-from iip.queue.streams import StreamQueue
+from iip.queue.streams import StreamQueue, publish
 from iip.worker.consumer import DEFAULT_RECLAIM_INTERVAL_SECONDS, run_consumer
-from iip.worker.jobs import build_handlers
+from iip.worker.jobs import AnalysisOptions, build_handlers
 
 logger = structlog.get_logger(__name__)
 
@@ -81,11 +82,21 @@ async def run_worker(
         batch=max(10, deps.settings.worker_concurrency),
     )
     enricher = build_enricher(deps.sessionmaker, deps.settings)
+    stream = deps.settings.jobs_stream
+
+    async def publish_job(job_type: str, payload: dict[str, Any]) -> None:
+        await publish(deps.redis, stream, job_type, payload)
+
     handlers = build_handlers(
         deps.sessionmaker,
         deps.llm,
         llm_max_retries=deps.settings.llm_max_retries,
         enricher=enricher,
+        publish_job=publish_job,
+        analysis=AnalysisOptions(
+            budget_tokens=deps.settings.analysis_budget_tokens,
+            max_output_tokens=deps.settings.analysis_max_output_tokens,
+        ),
     )
     # Sweep for abandoned jobs at least as often as the shortest retry wait.
     reclaim = min(DEFAULT_RECLAIM_INTERVAL_SECONDS, deps.settings.queue_retry_base_seconds)

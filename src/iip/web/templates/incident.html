@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ incident.title }}{% endblock %}
 {% block head %}
-{% if summary and summary.status == "pending" %}
+{% if (summary and summary.status == "pending") or analysis.in_progress %}
 <!-- The summary is still being written; reload until it's done. -->
 <meta http-equiv="refresh" content="5">
 {% endif %}
@@ -42,6 +42,22 @@
   .ev-group li:target { background: var(--warn-bg); }
   .ev-group code { background: var(--code); padding: 1px 5px; border-radius: 4px; margin-right: 4px; }
   .ev-when { font-size: .8rem; }
+  .analysis { padding: 16px 18px; }
+  .analysis-summary { margin: 0 0 10px; }
+  .hypotheses { list-style: none; margin: 0; padding: 0; }
+  .hypothesis { border-top: 1px solid var(--line); padding: 12px 0; }
+  .hypothesis p { margin: 6px 0; }
+  .h-top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .h-rank { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--fg); font-size: .8rem; font-weight: 600; }
+  .h-service { font-weight: 700; }
+  .h-conf { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
+  .bar { display: inline-block; width: 80px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--accent); }
+  .h-cites { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: .85rem; color: var(--muted); }
+  .h-steps { margin: 6px 0 0; padding-left: 18px; font-size: .9rem; }
+  .missing { margin-top: 8px; font-size: .9rem; }
+  .missing ul { margin: 4px 0 0; padding-left: 18px; }
+  .analysis-meta { font-size: .82rem; margin: 10px 0 0; }
   .section-note { margin: -4px 0 10px; font-size: .9rem; }
 </style>
 <p><a href="/incidents">← All incidents</a></p>
@@ -70,6 +86,52 @@
     <p class="muted" style="font-size:.82rem">Written by {{ summary.model }}, prompt version {{ summary.prompt_version | prompt_version }}{% if summary.latency_ms %}, in {{ summary.latency_ms }} ms{% endif %}{% if summary.completed_at %}, at {{ summary.completed_at.strftime("%H:%M:%S") }}{% endif %}, from the alerts as they first fired.{% if incident.status == "resolved" %} The incident has since been resolved.{% endif %}</p>
   {% endif %}
 </div>
+
+{% set categories = {"bad_deploy": "Bad deploy", "code_bug": "Code bug", "dependency_failure": "Dependency failure", "service_down": "Service down", "resource_exhaustion": "Resource exhaustion", "network_latency": "Network latency", "config_error": "Config error", "unknown": "Unknown"} %}
+<h2>Likely root cause</h2>
+<p class="muted section-note">Hypotheses from an AI model that read the evidence below. Each one links to the evidence it rests on; citations to evidence that doesn't exist are removed automatically.</p>
+{% set a = analysis.latest_done %}
+{% if a and a.result %}
+{% set r = a.result %}
+<div class="card analysis">
+  <p class="analysis-summary">{{ r.summary }}</p>
+  {% if r.hypotheses %}
+  <ol class="hypotheses">
+    {% for h in r.hypotheses %}
+    <li class="hypothesis">
+      <div class="h-top">
+        <span class="h-rank">{{ h.rank }}</span>
+        <span class="h-service">{{ h.root_cause_service }}</span>
+        <span class="pill neutral">{{ categories.get(h.category, h.category) }}</span>
+        <span class="h-conf" title="Model's confidence">
+          <span class="bar"><span style="width: {{ (h.confidence * 100) | round | int }}%"></span></span>
+          {{ (h.confidence * 100) | round | int }}%
+        </span>
+      </div>
+      <p>{{ h.explanation }}</p>
+      <div class="h-cites">Based on {% for id in h.evidence_ids %}<a class="ev-id" href="#{{ id }}" title="{{ evidence_summaries.get(id, '') }}">{{ id }}</a>{% endfor %}</div>
+      {% if h.next_steps %}<ul class="h-steps">{% for step in h.next_steps %}<li>{{ step }}</li>{% endfor %}</ul>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="muted">The model didn't offer a cause it could back with evidence.</p>
+  {% endif %}
+  {% if r.missing_information %}
+  <div class="missing"><span class="label">What's missing</span><ul>{% for m in r.missing_information %}<li>{{ m }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  <p class="muted analysis-meta">Written by {{ a.model }}, prompt {{ a.prompt_version | prompt_version }}{% if a.latency_ms %}, in {{ (a.latency_ms / 1000) | round(1) }} s{% endif %}.
+  {% if r.citations %}Citations checked: {{ r.citations.cited - r.citations.invalid }} of {{ r.citations.cited }} pointed at real evidence{% if r.citations.hypotheses_dropped %}, {{ r.citations.hypotheses_dropped }} unsupported {{ 'hypothesis' if r.citations.hypotheses_dropped == 1 else 'hypotheses' }} removed{% endif %}.{% endif %}
+  {% if r.context %}Evidence shown to the model: {{ r.context.included | length }} of {{ (r.context.included | length) + (r.context.dropped | length) }} items.{% endif %}
+  {% if analysis.in_progress %}A newer analysis with more evidence is being written.{% endif %}</p>
+</div>
+{% elif analysis.in_progress %}
+<div class="card empty"><p class="muted">Analyzing the evidence… this page refreshes automatically.</p></div>
+{% elif analysis.latest_failed %}
+<div class="card empty"><p class="muted">The analysis couldn't be generated this time. The evidence below is complete.</p></div>
+{% else %}
+<div class="card empty"><p class="muted">Not analyzed yet. Analysis runs once evidence has been collected{% if not summary %} and an AI model is configured{% endif %}.</p></div>
+{% endif %}
 
 <h2>Timeline</h2>
 <p class="muted section-note">What happened, in order. When the platform made a decision, like adding an alert to this incident instead of opening a new one, it says why.</p>

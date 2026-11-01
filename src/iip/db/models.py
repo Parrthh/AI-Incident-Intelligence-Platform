@@ -112,10 +112,15 @@ class Analysis(Base):
     __table_args__ = (
         CheckConstraint("status IN ('pending', 'done', 'failed')", name="status"),
         Index("ix_analyses_incident_id_created_at", "incident_id", text("created_at DESC")),
-        # One row per incident, kind and prompt version. Retries and duplicate jobs
-        # update this row instead of adding new ones (see llm/summarize.py).
+        # One row per incident, kind, prompt version and input. Retries and
+        # duplicate jobs update this row instead of adding new ones (see
+        # llm/summarize.py). New evidence means a new input, so a new row.
         UniqueConstraint(
-            "incident_id", "kind", "prompt_version", name="uq_analyses_incident_kind_prompt"
+            "incident_id",
+            "kind",
+            "prompt_version",
+            "input_hash",
+            name="uq_analyses_incident_kind_prompt_input",
         ),
     )
 
@@ -141,6 +146,11 @@ class Analysis(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Which job delivery is working on this row right now, and since when. Set while
     # an LLM call is in flight, cleared when it finishes.
+    # Fingerprint of what the model was given (the evidence it saw), so the same
+    # input is never analyzed twice and new evidence gets a fresh analysis.
+    input_hash: Mapped[str] = mapped_column(Text, server_default="")
+    # Structured output for kind="analysis" (hypotheses, citations, validation).
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     claimed_by: Mapped[str | None] = mapped_column(Text)
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

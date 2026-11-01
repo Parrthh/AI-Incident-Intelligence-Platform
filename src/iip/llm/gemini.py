@@ -47,13 +47,14 @@ class GeminiProvider:
         system: str | None = None,
         max_output_tokens: int = 1024,
         temperature: float = 0.2,
+        json_mode: bool = False,
     ) -> LLMResponse:
+        config: dict[str, Any] = {"temperature": temperature, "maxOutputTokens": max_output_tokens}
+        if json_mode:
+            config["responseMimeType"] = "application/json"
         body: dict[str, Any] = {
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": max_output_tokens,
-            },
+            "generationConfig": config,
         }
         if system:
             body["systemInstruction"] = {"parts": [{"text": system}]}

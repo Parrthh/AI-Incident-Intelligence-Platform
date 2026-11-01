@@ -18,6 +18,7 @@ from iip.db.models import Evidence
 from iip.incidents.queries import (
     InvalidCursorError,
     get_incident_detail,
+    incident_analysis,
     incident_evidence,
     incident_timeline,
     list_incidents,
@@ -83,6 +84,7 @@ async def incident_page(
     incident, alerts, summary = detail
     events = await incident_timeline(session, incident_id)
     evidence = await incident_evidence(session, incident_id)
+    analysis = await incident_analysis(session, incident_id)
     by_kind: dict[str, list[Evidence]] = {}
     for item in evidence:
         by_kind.setdefault(item.kind, []).append(item)
@@ -98,5 +100,7 @@ async def incident_page(
             timeline=build_timeline(events, evidence),
             evidence_by_kind=[(k, by_kind[k]) for k in EVIDENCE_ORDER if k in by_kind],
             evidence_count=len(evidence),
+            analysis=analysis,
+            evidence_summaries={e.id: e.summary for e in evidence},
         ),
     )
