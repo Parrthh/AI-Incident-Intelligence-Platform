@@ -21,7 +21,7 @@ from sqlalchemy import text
 from iip import __version__
 from iip.api.health import ReadinessChecks
 from iip.api.middleware import RequestContextMiddleware
-from iip.api.routes import system
+from iip.api.routes import home, system
 from iip.config import Settings, get_settings
 from iip.db.engine import create_engine
 from iip.queue.redis import create_redis
@@ -108,4 +108,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.add_middleware(RequestContextMiddleware)
     app.include_router(system.router)
+    app.include_router(home.router)
     return app

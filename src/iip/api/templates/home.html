@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Incident Intelligence Platform</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1a1a1a; --muted:#5c5c5c; --bg:#fafafa; --card:#fff; --line:#e3e3e3; --accent:#2f6fde; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#ececec; --muted:#a3a3a3; --bg:#111; --card:#1b1b1b; --line:#2c2c2c; --accent:#7aa7ff; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--fg); background:var(--bg); }
+  main { max-width:680px; margin:0 auto; padding:48px 16px; }
+  h1 { font-size:1.6rem; margin:0 0 8px; }
+  p { margin:0 0 16px; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 20px; margin:24px 0; }
+  .row { display:flex; justify-content:space-between; gap:16px; padding:6px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:0; }
+  code { font:14px ui-monospace,SFMono-Regular,Menlo,monospace; }
+  a { color:var(--accent); }
+  .badge { display:inline-block; font-size:.8rem; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <span class="badge">early development</span>
+  <h1>AI Incident Intelligence Platform</h1>
+  <p>A self-hostable incident copilot. It groups related Prometheus alerts into one
+  incident, gathers the logs, traces, metrics and deploys around it, and uses an LLM
+  to suggest root causes with citations to the evidence. The incident UI is being built now.</p>
+  <div class="card">
+    <div class="row"><span>Version</span><code>${version}</code></div>
+    <div class="row"><span>Commit</span><code>${commit}</code></div>
+    <div class="row"><span>Health</span><a href="/healthz"><code>/healthz</code></a></div>
+    <div class="row"><span>Readiness (database, Redis)</span><a href="/readyz"><code>/readyz</code></a></div>
+    <div class="row"><span>Build info</span><a href="/version"><code>/version</code></a></div>
+  </div>
+  <p>Source, plan and progress: <a href="${repo}">${repo_short}</a></p>
+  <p>This demo runs on free hosting and sleeps when idle; the first request after a
+  quiet period can take about a minute.</p>
+</main>
+</body>
+</html>
