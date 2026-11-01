@@ -4,8 +4,8 @@ Claude updates this at the end of every work session, in the same PR as the work
 
 ## Current status
 
-- **Active milestone:** M2 Async pipeline (M1 acceptance still waits on the `IIP_DEMO_WEBHOOK_TOKEN` secret for live demo data)
-- **Current step:** M2 PR B: transactional outbox, worker wiring, crash tests (PR A, the Redis Streams queue, is merged)
+- **Active milestone:** M2 Async pipeline
+- **Current step:** M2 PR C (PR A queue #18 and PR B outbox #19 are merged and live)
 - **Next up:** M2 PR C: queue metrics, DLQ inspect and replay CLI, load test
 - **Blockers:** none
 - **Repo:** https://github.com/Parrthh/AI-Incident-Intelligence-Platform
@@ -31,8 +31,8 @@ Claude updates this at the end of every work session, in the same PR as the work
 |---|---|---|---|---|
 | Setup (owner tasks) | done | 2026-10-31 | 2026-11-01 | Render connected; Render connector added to the Claude session |
 | M0 Foundations | done | 2026-10-31 | 2026-11-01 | |
-| M1 Walking skeleton | in progress | 2026-11-01 | | PRs #11 to #15; chaos run passes end to end |
-| M2 Async pipeline | not started | | | |
+| M1 Walking skeleton | done | 2026-11-01 | 2026-11-01 | PRs #11 to #15; chaos run forwards real incidents to the live demo |
+| M2 Async pipeline | in progress | 2026-11-01 | | PRs #18, #19 merged |
 | M3 Correlation and enrichment | not started | | | |
 | M4 Grounded analysis and evals | not started | | | |
 | M5 Incident memory | not started | | | |
@@ -76,6 +76,10 @@ Only real measurements. Every row needs method, environment and commit.
 | 2026-11-01 | Chaos `payment_failure`: incident opened to summary done | under 5 s (one poll interval) | `chaos/run.py` timings (polls every 5 s) | same, Gemini gemini-3.5-flash-lite | 06b5e5d |
 | 2026-11-01 | Chaos `payment_failure`: flag off to incident resolved | 240 s | `chaos/run.py` timings (polls every 20 s) | same | 06b5e5d |
 | 2026-11-01 | Chaos `payment_failure`: incidents opened | 1 (payment only, no false alerts) | `chaos/run.py` result | same, after excluding load-generator and raising threshold to 20% | 06b5e5d |
+| 2026-11-01 | Live demo: webhook accepted to summary stored | 1.3 s and 0.96 s (2 incidents) | Render app logs: `request` 202 log line to `summary_done` | Render free (awake), Neon free, Upstash free, Gemini gemini-3.5-flash-lite, chaos run 41316466918 forwarding to the demo | a836dd2 |
+| 2026-11-01 | Live demo: Gemini summary call | 820 ms and 825 ms; 280/82 and 282/80 input/output tokens | `summary_done` log fields `latency_ms`, tokens | same | a836dd2 |
+| 2026-11-01 | Live demo: webhook response time | 202 ms first request, then 58, 38 and 40 ms | `request` log field `duration_ms` (4 deliveries) | same | a836dd2 |
+| 2026-11-01 | Chaos `payment_failure` with the M2 queue: incidents opened | 2 (payment, plus checkout as a downstream symptom); both summarized and resolved | `chaos/run.py` result | GitHub runner, OTel Demo 3.1.0 | a836dd2 |
 | 2026-11-01 | Container start to serving (incl. migrations against Neon) | 4 s (migrations 2 s) | App log timestamps `migrations_starting` to `Uvicorn running` | Render free, Neon free (us-east-1) | f2fc9da |
 
 ### Eval history (from M4)
@@ -91,6 +95,14 @@ Only real measurements. Every row needs method, environment and commit.
 | | | | | | |
 
 ## Session log
+
+### 2026-11-01 (M2)
+Milestone / step: M2 PR A and PR B, M1 acceptance
+Done:
+- PR #18 Redis Streams queue with backoff retries and a dead-letter stream (ADR-0002). PR #19 transactional outbox, queue-driven summaries with per-incident claims, BackgroundTasks removed (ADR-0008). CI now annotates failing tests on the PR.
+- Parth added the `IIP_DEMO_WEBHOOK_TOKEN` secret. Chaos run 41316466918 forwarded alerts to the live demo: 2 incidents opened, summarized and resolved there. M1 acceptance met.
+- Note: this run opened a second incident for checkout (a symptom of the payment failure). Earlier runs opened only payment. M3 correlation should group them.
+Next: M2 PR C (queue metrics, DLQ inspect and replay CLI, load test).
 
 ### 2026-11-01 (M1)
 Milestone / step: M1 steps 1 to 10

@@ -27,8 +27,8 @@ REPO_URL = "https://github.com/Parrthh/AI-Incident-Intelligence-Platform"
 # Shown on the roadmap. Update when a milestone changes state.
 MILESTONES: list[tuple[str, str]] = [
     ("Foundations", "done"),
-    ("Alerts to summaries", "active"),
-    ("Reliable pipeline", "planned"),
+    ("Alerts to summaries", "done"),
+    ("Reliable pipeline", "active"),
     ("Grouping and evidence", "planned"),
     ("Root cause with citations", "planned"),
     ("Similar past incidents", "planned"),
