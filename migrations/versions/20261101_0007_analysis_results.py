@@ -18,9 +18,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "analyses", sa.Column("input_hash", sa.Text(), server_default="", nullable=False)
-    )
+    op.add_column("analyses", sa.Column("input_hash", sa.Text(), server_default="", nullable=False))
     op.add_column(
         "analyses", sa.Column("result", postgresql.JSONB(astext_type=sa.Text()), nullable=True)
     )

@@ -8,7 +8,7 @@ the rate of invented citations is a direct measure of hallucination.
 
 from dataclasses import dataclass
 
-from iip.analysis.schema import AnalysisResult
+from iip.analysis.schema import AnalysisResult, Hypothesis, TimelineEntry
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,7 @@ def validate_citations(
 ) -> tuple[AnalysisResult, CitationReport]:
     cited = 0
     invalid: list[str] = []
-    kept = []
+    kept: list[Hypothesis] = []
     dropped = 0
     for hypothesis in sorted(result.hypotheses, key=lambda h: h.rank):
         cited += len(hypothesis.evidence_ids)
@@ -38,7 +38,7 @@ def validate_citations(
             dropped += 1
             continue
         kept.append(hypothesis.model_copy(update={"evidence_ids": valid, "rank": len(kept) + 1}))
-    timeline = []
+    timeline: list[TimelineEntry] = []
     for entry in result.timeline:
         cited += len(entry.evidence_ids)
         invalid += [i for i in entry.evidence_ids if i not in known_ids]
