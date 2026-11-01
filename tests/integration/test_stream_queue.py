@@ -7,6 +7,7 @@ and backoffs are shrunk to milliseconds so retries happen quickly.
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
+from typing import cast
 
 import pytest
 from redis.asyncio import Redis
@@ -53,8 +54,11 @@ def make_queue(redis: Redis, stream: str, consumer: str = "c1", **overrides: flo
 
 
 async def dlq_entries(redis: Redis, stream: str) -> list[dict[str, str]]:
-    entries = await redis.xrange(f"{stream}.dlq")  # pyright: ignore[reportUnknownMemberType]
-    return [fields for _id, fields in entries]  # pyright: ignore[reportUnknownVariableType]
+    entries = cast(
+        list[tuple[str, dict[str, str]]],
+        await redis.xrange(f"{stream}.dlq"),  # pyright: ignore[reportUnknownMemberType]
+    )
+    return [fields for _id, fields in entries]
 
 
 async def test_published_message_is_read_and_acknowledged(

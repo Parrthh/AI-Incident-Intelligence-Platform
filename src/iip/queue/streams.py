@@ -219,5 +219,5 @@ class StreamQueue:
 
     async def pending_count(self) -> int:
         await self.ensure_group()
-        summary = cast(dict[str, Any], await self.redis.xpending(self.stream, self.group))  # pyright: ignore[reportUnknownMemberType]
+        summary: dict[str, Any] = await self.redis.xpending(self.stream, self.group)  # pyright: ignore[reportUnknownMemberType]
         return int(summary.get("pending", 0))
