@@ -1,0 +1,13 @@
+# Loaded last by the OpenTelemetry Demo's collector (its documented extension
+# point). Sends logs to Loki as well, so the platform can query them with LogQL.
+# Arrays replace rather than merge, so the upstream exporters are repeated.
+exporters:
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    logs:
+      exporters: [debug, opensearch, otlphttp/loki]

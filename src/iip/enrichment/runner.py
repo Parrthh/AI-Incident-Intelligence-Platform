@@ -27,7 +27,12 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from iip.db.models import Evidence, Incident, IncidentEvent
-from iip.enrichment.base import EnrichmentContext, EvidenceItem, EvidenceSource
+from iip.enrichment.base import (
+    EnrichmentContext,
+    EvidenceItem,
+    EvidenceSource,
+    SourceUnavailableError,
+)
 from iip.enrichment.breaker import CircuitBreaker, CircuitOpenError
 from iip.observability.metrics import ENRICHMENT_DURATION, EVIDENCE_COLLECTED
 
@@ -64,6 +69,12 @@ class Enricher:
     @property
     def source_names(self) -> list[str]:
         return [s.name for s in self._sources]
+
+    async def aclose(self) -> None:
+        for source in self._sources:
+            close = getattr(source, "aclose", None)
+            if close is not None:
+                await close()
 
     async def enrich(self, incident_id: uuid.UUID) -> list[SourceResult] | None:
         """Collect and store evidence. Returns None if the incident doesn't exist."""
@@ -144,6 +155,9 @@ class Enricher:
         except TimeoutError:
             breaker.record_failure()
             error = f"timeout after {self._timeout:g} s"
+        except SourceUnavailableError as exc:  # already a readable message
+            breaker.record_failure()
+            error = str(exc)[:300]
         except Exception as exc:  # noqa: BLE001 - any source failure is recorded, never fatal
             breaker.record_failure()
             error = f"{type(exc).__name__}: {exc}"[:300]

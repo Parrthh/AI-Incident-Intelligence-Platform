@@ -111,7 +111,12 @@ def prepare(demo_dir: Path, run_dir: Path, demo_version: str) -> None:
     override = demo_dir / ".env.override"
     existing = override.read_text() if override.exists() else ""
     if "DEMO_VERSION=" not in existing:
-        override.write_text(existing.rstrip("\n") + f"\nDEMO_VERSION={demo_version}\n")
+        existing = existing.rstrip("\n") + f"\nDEMO_VERSION={demo_version}\n"
+    # The collector's extras file also sends logs to Loki (deploy/demo-env).
+    if "OTEL_COLLECTOR_CONFIG_EXTRAS=" not in existing:
+        extras = DEMO_ENV / "otelcol-extras.yml"
+        existing = existing.rstrip("\n") + f"\nOTEL_COLLECTOR_CONFIG_EXTRAS={extras}\n"
+    override.write_text(existing)
 
     # Add our rules and Alertmanager to the demo's Prometheus config.
     prom_cfg = demo_dir / "src" / "prometheus" / "prometheus-config.yaml"
@@ -236,6 +241,8 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
     summarized = wait_for("the incident's summary", summary_finished, 300, 5)
     t_summarized = time.monotonic()
 
+    evidence = check_evidence(target_id)
+
     set_flag(demo_dir, scenario.flag, "off")
     t_off = time.monotonic()
     wait_for(f"all {target} incidents to resolve", lambda: not target_incidents("open"), 1200, 20)
@@ -267,7 +274,81 @@ def run(demo_dir: Path, scenario: Scenario, run_dir: Path, demo_version: str) ->
             for i in final
         ],
         "summary_text": (summarized.get("summary") or {}).get("text"),
+        "evidence": evidence,
     }
+
+
+def check_evidence(incident_id: str) -> dict[str, Any]:
+    """Evidence is collected, then collected again with Loki stopped (M3 acceptance).
+
+    1. Wait for the first collection and count evidence by kind.
+    2. Stop Loki and report a deploy to the failing service. A deploy during an
+       incident schedules another collection, which must still succeed for the
+       other sources and record "logs unavailable" on the timeline.
+    """
+    t0 = time.monotonic()
+
+    def enriched() -> dict[str, Any] | None:
+        inc = get_json(f"{IIP}/v1/incidents/{incident_id}")
+        return inc if inc.get("enriched_at") else None
+
+    first = wait_for("evidence collection", enriched, 300, 5)
+    seconds_to_evidence = round(time.monotonic() - t0)
+    kinds: dict[str, int] = {}
+    for item in first["evidence"]:
+        kinds[item["kind"]] = kinds.get(item["kind"], 0) + 1
+    unavailable = [t["reason"] for t in first["timeline"] if t["kind"] == "evidence_unavailable"]
+    log(f"evidence after {seconds_to_evidence}s: {kinds}, unavailable: {unavailable}")
+    for item in first["evidence"]:
+        log(f"  {item['id']}: {item['summary']}")
+
+    subprocess.run(["docker", "stop", "loki"], check=True, capture_output=True)  # noqa: S607
+    post_json(
+        f"{IIP}/v1/deploys",
+        {
+            "service": "payment",
+            "version": "chaos-hotfix",
+            "description": "Simulated hotfix deploy during the incident",
+        },
+        token="chaos-local-token",  # noqa: S106 - the local chaos stack's own test token
+    )
+
+    def logs_missing() -> list[str] | None:
+        inc = get_json(f"{IIP}/v1/incidents/{incident_id}")
+        reasons = [
+            t["reason"]
+            for t in inc["timeline"]
+            if t["kind"] == "evidence_unavailable" and t.get("source") == "logs"
+        ]
+        return reasons or None
+
+    loki_down = wait_for("a 'logs unavailable' note with Loki stopped", logs_missing, 300, 5)
+    subprocess.run(["docker", "start", "loki"], check=False, capture_output=True)  # noqa: S607
+    after = get_json(f"{IIP}/v1/incidents/{incident_id}")
+    log(f"with Loki stopped: {loki_down[0]}")
+    return {
+        "seconds_to_evidence": seconds_to_evidence,
+        "evidence_by_kind": kinds,
+        "unavailable_first_run": unavailable,
+        "loki_down_note": loki_down[0],
+        "evidence_after_loki_down": len(after["evidence"]),
+        "deploy_evidence": [e["summary"] for e in after["evidence"] if e["kind"] == "deploy"],
+        "examples": {
+            kind: next(e["summary"] for e in first["evidence"] if e["kind"] == kind)
+            for kind in kinds
+        },
+    }
+
+
+def post_json(url: str, body: dict[str, Any], token: str) -> Any:
+    request = urllib.request.Request(  # noqa: S310 - fixed local URL
+        url,
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=10) as resp:  # noqa: S310
+        return json.loads(resp.read())
 
 
 def print_captures(run_dir: Path) -> None:
@@ -287,10 +368,15 @@ def report(result: dict[str, Any], run_dir: Path) -> None:
     annotate(
         "notice",
         "chaos result",
-        json.dumps({k: v for k, v in result.items() if k != "summary_text"}),
+        json.dumps({k: v for k, v in result.items() if k not in {"summary_text", "evidence"}}),
     )
     if result.get("summary_text"):
         annotate("notice", "summary text", result["summary_text"])
+    evidence = result.get("evidence") or {}
+    annotate("notice", "evidence", json.dumps(evidence))
+    missing = {"metric", "log", "trace"} - set(evidence.get("evidence_by_kind", {}))
+    if missing:
+        annotate("warning", "evidence missing", f"no {', '.join(sorted(missing))} evidence")
     print_captures(run_dir)
 
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
