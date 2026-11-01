@@ -11,9 +11,10 @@ services:
     region: virginia  # same region as Neon and Upstash (AWS us-east-1)
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    # Free instances have no pre-deploy step, so migrations run at startup. They
-    # take a Postgres advisory lock, so overlapping instances during a deploy are safe.
-    dockerCommand: sh -c "iip migrate && exec iip api"
+    # Free instances have no pre-deploy step, so migrations run at startup, before
+    # the port opens. They take a Postgres advisory lock, so overlapping instances
+    # during a deploy are safe. No shell and no quoting: one plain command.
+    dockerCommand: iip api --migrate
     # Render restarts the service when this fails, so it must be the liveness
     # endpoint. Pointing it at /readyz would turn a database blip into a restart
     # loop. Readiness is checked by the post-deploy smoke test instead.

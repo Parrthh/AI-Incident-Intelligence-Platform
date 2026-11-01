@@ -88,6 +88,23 @@ jobs:
     name: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: iip
+          POSTGRES_PASSWORD: iip-ci-only
+          POSTGRES_DB: iip
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U iip -d iip"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -101,19 +118,33 @@ jobs:
           build-args: GIT_SHA=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Smoke test the image
+      - name: Start the image exactly as Render does
+        # Same command, production mode, PORT set by the platform, the variable
+        # names Render uses, and an sslmode query option like provider URLs have.
         run: |
-          docker run -d --name iip -p 8000:8000 -e IIP_ENV=development iip:ci
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:8000/healthz; then break; fi
+          docker run -d --name iip --network host \
+            -e IIP_ENV=production \
+            -e PORT=10000 \
+            -e DATABASE_URL="postgresql://iip:iip-ci-only@127.0.0.1:5432/iip?sslmode=disable" \
+            -e REDIS_URL="redis://127.0.0.1:6379/0" \
+            -e IIP_RUN_WORKER_IN_API=true \
+            iip:ci $(python3 -c "import yaml;print(yaml.safe_load(open('render.yaml'))['services'][0]['dockerCommand'])")
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:10000/healthz; then break; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' iip)" != "true" ]; then
+              echo "::error::container exited during startup"; exit 1
+            fi
             sleep 1
           done
           echo
-          curl -fsS http://127.0.0.1:8000/version | tee version.json
+          curl -fsS http://127.0.0.1:10000/version | tee version.json; echo
           grep -q '"git_sha":"${{ github.sha }}"' version.json
+          curl -fsS http://127.0.0.1:10000/readyz | tee readyz.json; echo
+          grep -q '"status":"ready"' readyz.json
           # Container must not run as root.
           test "$(docker exec iip id -u)" != "0"
-          docker inspect --format '{{.State.Health.Status}}' iip
       - name: Container logs
         if: always()
         run: docker logs iip || true

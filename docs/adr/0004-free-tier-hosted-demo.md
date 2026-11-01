@@ -32,7 +32,7 @@ These change; re-check when something behaves unexpectedly.
 Option 3, configured as follows:
 
 - **API and worker in one process** (`IIP_RUN_WORKER_IN_API=true`), because the free plan has no background workers. Self-hosted installs keep them separate (ADR-0001).
-- **Migrations at startup** (`iip migrate && exec iip api`), since free instances have no pre-deploy step. A transaction-scoped Postgres advisory lock makes concurrent runs safe.
+- **Migrations at startup** (`iip api --migrate`: one process, no shell, so no quoting differences between hosts), since free instances have no pre-deploy step. A transaction-scoped Postgres advisory lock makes concurrent runs safe.
 - **Render health check = `/healthz`** (liveness). Render restarts the service when its health check fails, so pointing it at `/readyz` would turn a database outage into a restart loop. It would also run a Postgres and Redis check on every health probe, which could keep Neon from suspending and spending Upstash commands. Readiness is verified from outside by the `Deploy check` workflow after each deploy.
 - **Deploy only green commits** (`autoDeployTrigger: checksPass`). Every commit to `main` deploys, so the deploy check can always expect the latest SHA.
 - **Same region everywhere:** Render Virginia, Neon and Upstash in AWS us-east-1.
