@@ -1,0 +1,11 @@
+{
+  "model": "gemini-3.5-flash-lite",
+  "prompt": "analyze_v1",
+  "snapshots": 24,
+  "measured_at": "2026-11-02T00:14:35+00:00",
+  "commit": "cffa4b060172",
+  "top1": 0.375,
+  "top3": 0.375,
+  "service_top1": 0.6667,
+  "citation_validity": 1.0
+}
