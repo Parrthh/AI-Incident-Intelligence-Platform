@@ -1,0 +1,280 @@
+{
+  "alerts": [
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "42.88% of checkout spans ended in error over the last 3 minutes.",
+        "summary": "checkout error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "checkout",
+        "service_name": "checkout",
+        "severity": "critical"
+      },
+      "service": "checkout",
+      "severity": "critical",
+      "starts_at": "2026-11-01T23:56:51.510000Z",
+      "status": "firing"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_trace_6",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:53:48.807193Z",
+      "payload": {
+        "count": 8,
+        "error": "error",
+        "max_duration_ms": 164.7,
+        "operation": "POST",
+        "service": "load-generator",
+        "trace_ids": [
+          "cfd9f25a8451a8ef26d4f03b32007135",
+          "378cc0022d68baa5a3dd98fa7b33f38f",
+          "5f6e799682cb36d02ec527834bf6cf42"
+        ]
+      },
+      "source": "traces",
+      "summary": "load-generator: 8 failing POST spans, \"error\" (first at 23:53:48, example trace cfd9f25a8451a8ef)"
+    },
+    {
+      "id": "ev_trace_5",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:53:48.807943Z",
+      "payload": {
+        "count": 8,
+        "error": "error",
+        "max_duration_ms": 163.0,
+        "operation": "POST",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "cfd9f25a8451a8ef26d4f03b32007135",
+          "378cc0022d68baa5a3dd98fa7b33f38f",
+          "5f6e799682cb36d02ec527834bf6cf42"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 8 failing POST spans, \"error\" (first at 23:53:48, example trace cfd9f25a8451a8ef)"
+    },
+    {
+      "id": "ev_trace_4",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:53:48.808064Z",
+      "payload": {
+        "count": 8,
+        "error": "error",
+        "max_duration_ms": 162.9,
+        "operation": "router frontend egress",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "cfd9f25a8451a8ef26d4f03b32007135",
+          "378cc0022d68baa5a3dd98fa7b33f38f",
+          "5f6e799682cb36d02ec527834bf6cf42"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 8 failing router frontend egress spans, \"error\" (first at 23:53:48, example trace cfd9f25a8451a8ef)"
+    },
+    {
+      "id": "ev_trace_3",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:53:48.809000Z",
+      "payload": {
+        "count": 16,
+        "error": "error",
+        "max_duration_ms": 161.9,
+        "operation": "POST /api/checkout",
+        "service": "frontend",
+        "trace_ids": [
+          "cfd9f25a8451a8ef26d4f03b32007135",
+          "378cc0022d68baa5a3dd98fa7b33f38f",
+          "5f6e799682cb36d02ec527834bf6cf42"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 16 failing POST /api/checkout spans, \"error\" (first at 23:53:48, example trace cfd9f25a8451a8ef)"
+    },
+    {
+      "id": "ev_trace_7",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:53:48.810000Z",
+      "payload": {
+        "count": 8,
+        "error": "error",
+        "max_duration_ms": 159.4,
+        "operation": "oteldemo.CheckoutService/PlaceOrder",
+        "service": "frontend",
+        "trace_ids": [
+          "cfd9f25a8451a8ef26d4f03b32007135",
+          "378cc0022d68baa5a3dd98fa7b33f38f",
+          "5f6e799682cb36d02ec527834bf6cf42"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 8 failing oteldemo.CheckoutService/PlaceOrder spans, \"error\" (first at 23:53:48, example trace cfd9f25a8451a8ef)"
+    },
+    {
+      "id": "ev_trace_8",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:53:48.810000Z",
+      "payload": {
+        "count": 8,
+        "error": "13 INTERNAL: failed to charge card: could not charge the card: rpc error: code = Unavailable desc = dns: A record lookup error: lookup badAddress on 127.0.0.11:53: server misbehaving",
+        "max_duration_ms": 160.7,
+        "operation": "executing api route (pages) /api/checkout",
+        "service": "frontend",
+        "trace_ids": [
+          "cfd9f25a8451a8ef26d4f03b32007135",
+          "378cc0022d68baa5a3dd98fa7b33f38f",
+          "5f6e799682cb36d02ec527834bf6cf42"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 8 failing executing api route (pages) /api/checkout spans, \"13 INTERNAL: failed to charge card: could not charge the card: rpc error: code = Unavailable desc = dns: A record lookup error: lookup badAddress on 127.0.0.11:53: server misbehaving\" (first at 23:53:48, example trace cfd9f25a8451a8ef)"
+    },
+    {
+      "id": "ev_trace_2",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:53:48.820068Z",
+      "payload": {
+        "count": 8,
+        "error": "failed to charge card: could not charge the card: rpc error: code = Unavailable desc = dns: A record lookup error: lookup badAddress on 127.0.0.11:53: server misbehaving",
+        "max_duration_ms": 148.3,
+        "operation": "oteldemo.CheckoutService/PlaceOrder",
+        "service": "checkout",
+        "trace_ids": [
+          "cfd9f25a8451a8ef26d4f03b32007135",
+          "378cc0022d68baa5a3dd98fa7b33f38f",
+          "5f6e799682cb36d02ec527834bf6cf42"
+        ]
+      },
+      "source": "traces",
+      "summary": "checkout: 8 failing oteldemo.CheckoutService/PlaceOrder spans, \"failed to charge card: could not charge the card: rpc error: code = Unavailable desc = dns: A record lookup error: lookup badAddress on 127.0.0.11:53: server misbehaving\" (first at 23:53:48, example trace cfd9f25a8451a8ef)"
+    },
+    {
+      "id": "ev_trace_1",
+      "kind": "trace",
+      "observed_at": "2026-11-01T23:53:48.967295Z",
+      "payload": {
+        "count": 8,
+        "error": "dns: A record lookup error: lookup badAddress on 127.0.0.11:53: server misbehaving",
+        "max_duration_ms": 3.0,
+        "operation": "oteldemo.PaymentService/Charge",
+        "service": "checkout",
+        "trace_ids": [
+          "cfd9f25a8451a8ef26d4f03b32007135",
+          "378cc0022d68baa5a3dd98fa7b33f38f",
+          "5f6e799682cb36d02ec527834bf6cf42"
+        ]
+      },
+      "source": "traces",
+      "summary": "checkout: 8 failing oteldemo.PaymentService/Charge spans, \"dns: A record lookup error: lookup badAddress on 127.0.0.11:53: server misbehaving\" (first at 23:53:48, example trace cfd9f25a8451a8ef)"
+    },
+    {
+      "id": "ev_metric_1",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:55:36.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 0.25,
+        "peak_at": "2026-11-01T23:56:51.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m]))",
+        "service": "checkout",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "checkout error ratio: 0% before, peaked at 25% at 23:56:51 (rose from 23:55:36)"
+    },
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:56:51.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "42.88% of checkout spans ended in error over the last 3 minutes.",
+          "summary": "checkout error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "checkout",
+          "service_name": "checkout",
+          "severity": "critical"
+        },
+        "service": "checkout",
+        "severity": "critical",
+        "starts_at": "2026-11-01T23:56:51.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on checkout fired: 42.88% of checkout spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_2",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:56:51.510000Z",
+      "payload": {
+        "baseline": 159.9999999999999,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 159.9999999999999,
+        "peak_at": "2026-11-01T23:56:51.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"checkout\"}[2m])))",
+        "service": "checkout",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "checkout p95 latency: 160 ms before, peaked at 160 ms at 23:56:51 (no clear change)"
+    },
+    {
+      "id": "ev_metric_3",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:57:36.510000Z",
+      "payload": {
+        "baseline": 0.2,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 0.5168355555555555,
+        "peak_at": "2026-11-01T23:57:36.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"checkout\"}[2m]))",
+        "service": "checkout",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "checkout request rate: 0.2/s before, peaked at 0.5/s at 23:57:36 (no clear change)"
+    }
+  ],
+  "id": "payment_unreachable-125019895710",
+  "incident": {
+    "services": [
+      "checkout"
+    ],
+    "started_at": "2026-11-01T23:56:51.510000Z",
+    "status": "open",
+    "title": "checkout error rate above 20%"
+  },
+  "recorded_at": "2026-11-01T23:57:49Z",
+  "scenario": {
+    "also_correct": [
+      {
+        "category": "config_error",
+        "service": "checkout"
+      }
+    ],
+    "category": "service_down",
+    "name": "payment_unreachable",
+    "root_cause_service": "payment"
+  },
+  "source": {
+    "commit": "12d5b53c1668fe8a6b7310e727cecf6b30fe263b",
+    "demo_version": "3.1.0",
+    "job_id": 125019895710,
+    "run_id": "41363894076"
+  },
+  "unavailable": {}
+}

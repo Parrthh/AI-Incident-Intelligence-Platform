@@ -1,5 +1,0 @@
-description: The ad service's container is stopped.
-inject: {type: docker_stop, container: ad}
-root_cause_service: ad
-category: service_down
-watch_service: frontend

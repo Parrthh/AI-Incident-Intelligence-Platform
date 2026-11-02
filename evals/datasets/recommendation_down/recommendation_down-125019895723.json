@@ -1,0 +1,274 @@
+{
+  "alerts": [
+    {
+      "alertname": "HighErrorRate",
+      "annotations": {
+        "description": "23.95% of frontend spans ended in error over the last 3 minutes.",
+        "summary": "frontend error rate above 20%"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighErrorRate",
+        "service": "frontend",
+        "service_name": "frontend",
+        "severity": "critical"
+      },
+      "service": "frontend",
+      "severity": "critical",
+      "starts_at": "2026-11-02T00:00:21.510000Z",
+      "status": "firing"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_log_1",
+      "kind": "log",
+      "observed_at": "2026-11-01T23:56:57.053000Z",
+      "payload": {
+        "capped": false,
+        "count": 337,
+        "example": "API request failed",
+        "first_seen": "2026-11-01T23:56:57.053000+00:00",
+        "last_seen": "2026-11-02T00:01:16.938000+00:00",
+        "levels": [
+          "ERROR"
+        ],
+        "lines_scanned": 337,
+        "service": "frontend",
+        "template": "API request failed"
+      },
+      "source": "logs",
+      "summary": "frontend log pattern seen 337 times since 23:56:57: \"API request failed\""
+    },
+    {
+      "id": "ev_metric_1",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:58:36.510000Z",
+      "payload": {
+        "baseline": 0.004323938246348851,
+        "changed": true,
+        "metric": "error_ratio",
+        "peak": 0.1823273179838208,
+        "peak_at": "2026-11-02T00:00:36.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m]))",
+        "service": "frontend",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "frontend error ratio: 0% before, peaked at 18% at 00:00:36 (rose from 23:58:36)"
+    },
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "observed_at": "2026-11-02T00:00:21.510000Z",
+      "payload": {
+        "alertname": "HighErrorRate",
+        "annotations": {
+          "description": "23.95% of frontend spans ended in error over the last 3 minutes.",
+          "summary": "frontend error rate above 20%"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighErrorRate",
+          "service": "frontend",
+          "service_name": "frontend",
+          "severity": "critical"
+        },
+        "service": "frontend",
+        "severity": "critical",
+        "starts_at": "2026-11-02T00:00:21.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighErrorRate on frontend fired: 23.95% of frontend spans ended in error over the last 3 minutes."
+    },
+    {
+      "id": "ev_trace_6",
+      "kind": "trace",
+      "observed_at": "2026-11-02T00:00:25.376000Z",
+      "payload": {
+        "count": 39,
+        "error": "error",
+        "max_duration_ms": 52.0,
+        "operation": "GET",
+        "service": "frontend-web",
+        "trace_ids": [
+          "8b27c9a726135a45fbc1ff6c9f09252e",
+          "735602cd93dff84bbb69d704ae13c7e4",
+          "f851144cb96a07ce540fcf0c58eef42e"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-web: 39 failing GET spans, \"error\" (first at 00:00:25, example trace 8b27c9a726135a45)"
+    },
+    {
+      "id": "ev_trace_1",
+      "kind": "trace",
+      "observed_at": "2026-11-02T00:00:25.386000Z",
+      "payload": {
+        "count": 100,
+        "error": "error",
+        "max_duration_ms": 10.4,
+        "operation": "GET /api/recommendations",
+        "service": "frontend",
+        "trace_ids": [
+          "8b27c9a726135a45fbc1ff6c9f09252e",
+          "735602cd93dff84bbb69d704ae13c7e4",
+          "f851144cb96a07ce540fcf0c58eef42e"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 100 failing GET /api/recommendations spans, \"error\" (first at 00:00:25, example trace 8b27c9a726135a45)"
+    },
+    {
+      "id": "ev_trace_5",
+      "kind": "trace",
+      "observed_at": "2026-11-02T00:00:25.386118Z",
+      "payload": {
+        "count": 50,
+        "error": "error",
+        "max_duration_ms": 12.7,
+        "operation": "GET",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "8b27c9a726135a45fbc1ff6c9f09252e",
+          "735602cd93dff84bbb69d704ae13c7e4",
+          "f851144cb96a07ce540fcf0c58eef42e"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 50 failing GET spans, \"error\" (first at 00:00:25, example trace 8b27c9a726135a45)"
+    },
+    {
+      "id": "ev_trace_4",
+      "kind": "trace",
+      "observed_at": "2026-11-02T00:00:25.386274Z",
+      "payload": {
+        "count": 50,
+        "error": "error",
+        "max_duration_ms": 12.5,
+        "operation": "router frontend egress",
+        "service": "frontend-proxy",
+        "trace_ids": [
+          "8b27c9a726135a45fbc1ff6c9f09252e",
+          "735602cd93dff84bbb69d704ae13c7e4",
+          "f851144cb96a07ce540fcf0c58eef42e"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend-proxy: 50 failing router frontend egress spans, \"error\" (first at 00:00:25, example trace 8b27c9a726135a45)"
+    },
+    {
+      "id": "ev_trace_2",
+      "kind": "trace",
+      "observed_at": "2026-11-02T00:00:25.387000Z",
+      "payload": {
+        "count": 50,
+        "error": "error",
+        "max_duration_ms": 4.3,
+        "operation": "oteldemo.RecommendationService/ListRecommendations",
+        "service": "frontend",
+        "trace_ids": [
+          "8b27c9a726135a45fbc1ff6c9f09252e",
+          "735602cd93dff84bbb69d704ae13c7e4",
+          "f851144cb96a07ce540fcf0c58eef42e"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 50 failing oteldemo.RecommendationService/ListRecommendations spans, \"error\" (first at 00:00:25, example trace 8b27c9a726135a45)"
+    },
+    {
+      "id": "ev_trace_3",
+      "kind": "trace",
+      "observed_at": "2026-11-02T00:00:25.387000Z",
+      "payload": {
+        "count": 50,
+        "error": "14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 172.18.0.28:9001. Resolution note: ",
+        "max_duration_ms": 9.5,
+        "operation": "executing api route (pages) /api/recommendations",
+        "service": "frontend",
+        "trace_ids": [
+          "8b27c9a726135a45fbc1ff6c9f09252e",
+          "735602cd93dff84bbb69d704ae13c7e4",
+          "f851144cb96a07ce540fcf0c58eef42e"
+        ]
+      },
+      "source": "traces",
+      "summary": "frontend: 50 failing executing api route (pages) /api/recommendations spans, \"14 UNAVAILABLE: No connection established. Last error: Error: connect EHOSTUNREACH 172.18.0.28:9001. Resolution note: \" (first at 00:00:25, example trace 8b27c9a726135a45)"
+    },
+    {
+      "id": "ev_metric_2",
+      "kind": "metric",
+      "observed_at": "2026-11-02T00:00:36.510000Z",
+      "payload": {
+        "baseline": 40.757575757575765,
+        "changed": false,
+        "metric": "p95_latency",
+        "peak": 28.839999999999975,
+        "peak_at": "2026-11-02T00:00:36.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend\"}[2m])))",
+        "service": "frontend",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "frontend p95 latency: 41 ms before, peaked at 29 ms at 00:00:36 (no clear change)"
+    },
+    {
+      "id": "ev_metric_3",
+      "kind": "metric",
+      "observed_at": "2026-11-02T00:00:36.510000Z",
+      "payload": {
+        "baseline": 24.0,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 26.78333333333333,
+        "peak_at": "2026-11-02T00:00:36.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend\"}[2m]))",
+        "service": "frontend",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "frontend request rate: 24.0/s before, peaked at 26.8/s at 00:00:36 (no clear change)"
+    },
+    {
+      "id": "ev_trace_7",
+      "kind": "trace",
+      "observed_at": "2026-11-02T00:00:59.862841Z",
+      "payload": {
+        "count": 1,
+        "error": "error",
+        "max_duration_ms": 8.4,
+        "operation": "GET",
+        "service": "load-generator",
+        "trace_ids": [
+          "524562b8a15117e9c4ec11f1b5891e52"
+        ]
+      },
+      "source": "traces",
+      "summary": "load-generator: 1 failing GET span, \"error\" (first at 00:00:59, example trace 524562b8a15117e9)"
+    }
+  ],
+  "id": "recommendation_down-125019895723",
+  "incident": {
+    "services": [
+      "frontend"
+    ],
+    "started_at": "2026-11-02T00:00:21.510000Z",
+    "status": "open",
+    "title": "frontend error rate above 20%"
+  },
+  "recorded_at": "2026-11-02T00:01:22Z",
+  "scenario": {
+    "also_correct": [],
+    "category": "service_down",
+    "name": "recommendation_down",
+    "root_cause_service": "recommendation"
+  },
+  "source": {
+    "commit": "12d5b53c1668fe8a6b7310e727cecf6b30fe263b",
+    "demo_version": "3.1.0",
+    "job_id": 125019895723,
+    "run_id": "41363894076"
+  },
+  "unavailable": {}
+}
