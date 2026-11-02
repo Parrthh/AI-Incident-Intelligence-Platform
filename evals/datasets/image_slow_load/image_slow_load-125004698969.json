@@ -1,0 +1,130 @@
+{
+  "alerts": [
+    {
+      "alertname": "HighLatencyP95",
+      "annotations": {
+        "description": "p95 span duration for frontend-proxy is 4.41k ms over the last 3 minutes.",
+        "summary": "frontend-proxy p95 latency above 1.5s"
+      },
+      "ends_at": null,
+      "labels": {
+        "alertname": "HighLatencyP95",
+        "service": "frontend-proxy",
+        "service_name": "frontend-proxy",
+        "severity": "warning"
+      },
+      "service": "frontend-proxy",
+      "severity": "warning",
+      "starts_at": "2026-11-01T23:17:51.510000Z",
+      "status": "firing"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev_alert_1",
+      "kind": "alert",
+      "observed_at": "2026-11-01T23:17:51.510000Z",
+      "payload": {
+        "alertname": "HighLatencyP95",
+        "annotations": {
+          "description": "p95 span duration for frontend-proxy is 4.41k ms over the last 3 minutes.",
+          "summary": "frontend-proxy p95 latency above 1.5s"
+        },
+        "ends_at": null,
+        "labels": {
+          "alertname": "HighLatencyP95",
+          "service": "frontend-proxy",
+          "service_name": "frontend-proxy",
+          "severity": "warning"
+        },
+        "service": "frontend-proxy",
+        "severity": "warning",
+        "starts_at": "2026-11-01T23:17:51.510000+00:00",
+        "status": "firing"
+      },
+      "source": "alerts",
+      "summary": "HighLatencyP95 on frontend-proxy fired: p95 span duration for frontend-proxy is 4.41k ms over the last 3 minutes."
+    },
+    {
+      "id": "ev_metric_1",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:17:51.510000Z",
+      "payload": {
+        "baseline": 0.0,
+        "changed": false,
+        "metric": "error_ratio",
+        "peak": 0.0,
+        "peak_at": "2026-11-01T23:17:51.510000+00:00",
+        "query": "(sum(rate(traces_span_metrics_calls_total{service_name=\"frontend-proxy\",status_code=\"STATUS_CODE_ERROR\"}[2m])) or sum(rate(traces_span_metrics_calls_total{service_name=\"frontend-proxy\"}[2m])) * 0) / sum(rate(traces_span_metrics_calls_total{service_name=\"frontend-proxy\"}[2m]))",
+        "service": "frontend-proxy",
+        "unit": "ratio"
+      },
+      "source": "metrics",
+      "summary": "frontend-proxy error ratio: 0% before, peaked at 0% at 23:17:51 (no clear change)"
+    },
+    {
+      "id": "ev_metric_2",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:17:51.510000Z",
+      "payload": {
+        "baseline": 3511.981566820277,
+        "changed": true,
+        "metric": "p95_latency",
+        "peak": 10402.173913043474,
+        "peak_at": "2026-11-01T23:17:51.510000+00:00",
+        "query": "histogram_quantile(0.95, sum by (le) (rate(traces_span_metrics_duration_milliseconds_bucket{service_name=\"frontend-proxy\"}[2m])))",
+        "service": "frontend-proxy",
+        "unit": "ms"
+      },
+      "source": "metrics",
+      "summary": "frontend-proxy p95 latency: 3512 ms before, peaked at 10402 ms at 23:17:51 (rose from 23:17:51)"
+    },
+    {
+      "id": "ev_metric_3",
+      "kind": "metric",
+      "observed_at": "2026-11-01T23:17:51.510000Z",
+      "payload": {
+        "baseline": 13.63322277962034,
+        "changed": false,
+        "metric": "request_rate",
+        "peak": 8.383193613439776,
+        "peak_at": "2026-11-01T23:17:51.510000+00:00",
+        "query": "sum(rate(traces_span_metrics_calls_total{service_name=\"frontend-proxy\"}[2m]))",
+        "service": "frontend-proxy",
+        "unit": "rps"
+      },
+      "source": "metrics",
+      "summary": "frontend-proxy request rate: 13.6/s before, peaked at 8.4/s at 23:17:51 (no clear change)"
+    }
+  ],
+  "id": "image_slow_load-125004698969",
+  "incident": {
+    "services": [
+      "frontend-proxy"
+    ],
+    "started_at": "2026-11-01T23:17:51.510000Z",
+    "status": "open",
+    "title": "frontend-proxy p95 latency above 1.5s"
+  },
+  "recorded_at": "2026-11-01T23:18:48Z",
+  "scenario": {
+    "also_correct": [
+      {
+        "category": "network_latency",
+        "service": "frontend-proxy"
+      }
+    ],
+    "category": "network_latency",
+    "name": "image_slow_load",
+    "root_cause_service": "image-provider"
+  },
+  "source": {
+    "commit": "ff66f434b713da3fa46dd5290ffac2029e1ba06a",
+    "demo_version": "3.1.0",
+    "job_id": 125004698969,
+    "run_id": "41358854289"
+  },
+  "unavailable": {
+    "logs": "logs unavailable: HTTP 400: parse error at line 1, col 16: invalid char escape"
+  }
+}

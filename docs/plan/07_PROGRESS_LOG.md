@@ -101,7 +101,8 @@ Only real measurements. Every row needs method, environment and commit.
 
 | Date | Prompt version | Model | Scenarios / snapshots | Top-1 | Top-3 | Citation validity | Cost / incident | p50 latency | Commit |
 |---|---|---|---|---|---|---|---|---|---|
-| | | | | | | | | | |
+| 2026-11-02 | analyze_v1 | gemini-3.5-flash-lite | 12 / 24 | 38% (service only: 67%) | 38% | 100% | $0 (free tier); 1,627 in / 556 out tokens mean | 1,748 ms | cffa4b0 |
+| 2026-11-02 | analyze_v1 (same data, second run: run-to-run variance) | gemini-3.5-flash-lite | 12 / 24 | 33% (service only: 71%) | 38% | 100% | $0; 1,639 in / 546 out | 1,800 ms | 629facc |
 
 ### Adoption (from M7, weekly)
 

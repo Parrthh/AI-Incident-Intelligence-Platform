@@ -1,4 +1,0 @@
-description: The ad service fails requests.
-inject: {type: flag, flag: adFailure, variant: "on"}
-root_cause_service: ad
-category: code_bug

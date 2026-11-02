@@ -1,0 +1,66 @@
+name: Model comparison
+
+# Runs the root-cause eval with several models on the same snapshots, for the
+# accuracy / latency / cost table in docs/evals/model-comparison.md. On demand only.
+# "gemini:<model>" uses the GEMINI_API_KEY secret; "ollama:<model>" runs the
+# model locally on the runner (CPU only, so slow and small).
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: "Comma-separated provider:model"
+        default: "gemini:gemini-3.5-flash-lite,gemini:gemini-3.5-flash,ollama:qwen2.5:3b"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        env:
+          MODELS: ${{ inputs.models }}
+        run: |
+          matrix=$(python3 -c "
+          import json, os
+          items = [m.strip() for m in os.environ['MODELS'].split(',') if m.strip()]
+          print(json.dumps({'include': [{'provider': m.split(':', 1)[0], 'model': m.split(':', 1)[1]} for m in items]}))
+          ")
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  eval:
+    name: eval (${{ matrix.provider }} ${{ matrix.model }})
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 1  # one at a time: they share the Gemini free-tier quota
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync
+      - name: Start Ollama
+        if: matrix.provider == 'ollama'
+        run: |
+          docker run -d --name ollama -p 11434:11434 ollama/ollama:0.12.6
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:11434/api/tags && break; sleep 2; done
+          docker exec ollama ollama pull "${{ matrix.model }}"
+      - name: Run the eval
+        run: |
+          pause=4; conc=1
+          if [ "${{ matrix.provider }}" = "ollama" ]; then pause=0; fi
+          uv run python -m iip.evals --provider "${{ matrix.provider }}" --model "${{ matrix.model }}" \
+            --concurrency $conc --pause $pause --out evals/reports/compare
+          cat evals/reports/compare/report.md >> "$GITHUB_STEP_SUMMARY"
+          python3 -c "
+          import json
+          r = json.load(open('evals/reports/compare/report.json'))
+          print('::notice title=eval ${{ matrix.provider }}:${{ matrix.model }}::' + json.dumps({'model': r['model'], 'wall_seconds': r['wall_seconds'], **{k: v for k, v in r['summary'].items() if k != 'per_scenario'}}))
+          "

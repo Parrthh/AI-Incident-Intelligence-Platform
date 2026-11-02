@@ -1,4 +1,0 @@
-description: The email service leaks memory and slows down.
-inject: {type: flag, flag: emailMemoryLeak, variant: "1000x"}
-root_cause_service: email
-category: resource_exhaustion

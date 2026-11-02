@@ -1,0 +1,11 @@
+description: >-
+  A deploy to checkout is reported, then payment starts failing. The deploy is
+  innocent: it tests that the analysis doesn't blame any recent deploy.
+inject:
+  type: deploy_then_flag
+  service: checkout
+  version: v5.2.0
+  flag: paymentFailure
+  variant: "100%"
+root_cause_service: payment
+category: code_bug

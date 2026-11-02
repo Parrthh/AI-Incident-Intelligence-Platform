@@ -1,0 +1,5 @@
+description: The recommendation service's container is stopped.
+inject: {type: docker_stop, container: recommendation}
+root_cause_service: recommendation
+category: service_down
+watch_service: frontend

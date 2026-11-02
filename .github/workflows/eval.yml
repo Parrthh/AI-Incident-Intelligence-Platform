@@ -1,0 +1,58 @@
+name: Root-cause eval
+
+# Replays the analysis on recorded chaos snapshots (evals/datasets) with the real
+# model and scores it. On PRs that change the prompt, the analysis code or the
+# eval, it compares with evals/baseline.json and fails on a clear regression
+# (top-3 down more than 10 points or citation validity down more than 5).
+# The report is posted on the PR. Uses the GEMINI_API_KEY secret (free tier).
+on:
+  pull_request:
+    paths:
+      - "src/iip/analysis/**"
+      - "src/iip/llm/**"
+      - "src/iip/evals/**"
+      - "evals/**"
+      - ".github/workflows/eval.yml"
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Gemini model"
+        default: "gemini-3.5-flash-lite"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: eval-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      MODEL: ${{ inputs.model || 'gemini-3.5-flash-lite' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - run: uv sync
+      - name: Run the eval
+        id: eval
+        run: |
+          args=(--provider gemini --model "$MODEL" --concurrency 1 --pause 4 --out evals/reports/ci)
+          if [ -f evals/baseline.json ]; then args+=(--baseline evals/baseline.json); fi
+          status=0
+          uv run python -m iip.evals "${args[@]}" || status=$?
+          cat evals/reports/ci/report.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+      - name: Post the report on the PR
+        if: always() && github.event_name == 'pull_request' && hashFiles('evals/reports/ci/report.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file evals/reports/ci/report.md
