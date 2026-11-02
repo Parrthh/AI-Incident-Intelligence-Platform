@@ -37,7 +37,9 @@ LLM_REQUEST_DURATION = Histogram(
     "iip_llm_request_duration_seconds",
     "Successful LLM call duration as reported by the provider client.",
     ["provider", "model"],
-    buckets=(0.1, 0.25, 0.5, 1, 2, 5, 10, 30),
+    # Small buckets too: the fake model used in tests answers in about a
+    # millisecond, and coarse buckets would make up ~50 ms readings for it.
+    buckets=(0.005, 0.025, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30),
 )
 LLM_TOKENS = Counter("iip_llm_tokens_total", "LLM tokens used.", ["provider", "model", "direction"])
 

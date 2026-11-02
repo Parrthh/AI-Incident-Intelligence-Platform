@@ -5,7 +5,7 @@ comparison in the eval. API reference: https://github.com/ollama/ollama/blob/mai
 """
 
 import time
-from typing import Any
+from typing import Any, cast
 
 import httpx
 
@@ -69,8 +69,9 @@ class OllamaProvider:
                 retryable=response.status_code >= 500,
                 status_code=response.status_code,
             )
-        data: dict[str, Any] = response.json()
-        text = str((data.get("message") or {}).get("content", "")).strip()
+        data = cast(dict[str, Any], response.json())
+        message = cast(dict[str, Any], data.get("message") or {})
+        text = str(message.get("content", "")).strip()
         if not text:
             raise LLMError("ollama returned empty text", retryable=False)
         return LLMResponse(
